@@ -1,215 +1,277 @@
--- [[ CARREGAMENTO DA INTERFACE ]]
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Ui_flow_folder"))()
-local Container = Library:CreateWindow("INKZIN HUB | SEA 1 (STARTER)")
+local Sea1 = {}
 
-local LocalPlayer = game.Players.LocalPlayer
-local Level = LocalPlayer.Data.Level
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
 
--- [[ REPOSITÓRIO DE QUESTS - SEA 1 ]]
--- Nível, NomeQuest, NomeNPC, NomeMonstro, PosNPC
-local Sea1_Quests = {
-    {0, "BanditQuest1", "Quest Giver", "Bandit", CFrame.new(1060, 15, 1545)},
-    {10, "MonkeyQuest1", "Adventurer", "Monkey", CFrame.new(-1600, 35, 155)},
-    {15, "MonkeyQuest1", "Adventurer", "Gorilla", CFrame.new(-1600, 35, 155)},
-    {30, "PirateVillageQuest", "Sophie", "Pirate", CFrame.new(-1140, 5, 3825)},
-    {40, "PirateVillageQuest", "Sophie", "Brute", CFrame.new(-1140, 5, 3825)},
-    {60, "DesertQuest", "Desert Adventurer", "Desert Bandit", CFrame.new(895, 5, 4390)},
-    {75, "DesertQuest", "Desert Adventurer", "Desert Officer", CFrame.new(895, 5, 4390)},
-    {90, "SnowQuest", "Village Elder", "Snow Bandit", CFrame.new(1385, 15, -1300)},
-    {100, "SnowQuest", "Village Elder", "Snowman", CFrame.new(1385, 15, -1300)},
-    {120, "MarineQuest", "Marine Officer", "Chief Petty Officer", CFrame.new(-4855, 20, 4340)},
-    {150, "SkyQuest", "Sky Adventurer", "Sky Bandit", CFrame.new(-4840, 715, -2620)},
-    {190, "PrisonQuest", "Prison Warden", "Prisoner", CFrame.new(5310, 5, 470)},
-    {250, "MagmaQuest", "Magma Admiral", "Military Soldier", CFrame.new(-5315, 10, 8515)},
-    {300, "MagmaQuest", "Magma Admiral", "Military Spy", CFrame.new(-5315, 10, 8515)},
-    {375, "UnderwaterQuest", "Water Adventurer", "Fishman Warrior", CFrame.new(61120, 15, 1565)},
-    {450, "SkyQuest2", "Mole", "God's Guard", CFrame.new(-4720, 845, -1950)},
-    {525, "FountainQuest", "Fountain Adventurer", "Galley Pirate", CFrame.new(5255, 40, 4050)},
-    {625, "FountainQuest", "Fountain Adventurer", "Galley Captain", CFrame.new(5255, 40, 4050)}
+-- [[ 1. TABELA DE DADOS (Nível 1 ao 700) ]]
+local QuestData = {
+    {Level = 1, NPC = "Bandit", QuestName = "BanditQuest1", QuestLevel = 1, EnemyPos = CFrame.new(1060, 17, 1547), QuestPos = CFrame.new(1060, 17, 1547)},
+    {Level = 10, NPC = "Monkey", QuestName = "JungleQuest", QuestLevel = 1, EnemyPos = CFrame.new(-1600, 37, 150), QuestPos = CFrame.new(-1600, 37, 150)},
+    {Level = 15, NPC = "Gorilla", QuestName = "JungleQuest", QuestLevel = 2, EnemyPos = CFrame.new(-1240, 7, -500), QuestPos = CFrame.new(-1600, 37, 150)},
+    {Level = 30, NPC = "Pirate", QuestName = "BuggyQuest1", QuestLevel = 1, EnemyPos = CFrame.new(-1115, 5, 3940), QuestPos = CFrame.new(-1140, 5, 3830)},
+    {Level = 40, NPC = "Brute", QuestName = "BuggyQuest1", QuestLevel = 2, EnemyPos = CFrame.new(-1300, 6, 4160), QuestPos = CFrame.new(-1140, 5, 3830)},
+    {Level = 60, NPC = "Desert Bandit", QuestName = "DesertQuest", QuestLevel = 1, EnemyPos = CFrame.new(930, 7, 4420), QuestPos = CFrame.new(895, 7, 4390)},
+    {Level = 75, NPC = "Desert Officer", QuestName = "DesertQuest", QuestLevel = 2, EnemyPos = CFrame.new(1350, 7, 4380), QuestPos = CFrame.new(895, 7, 4390)},
+    {Level = 90, NPC = "Snow Bandit", QuestName = "SnowQuest", QuestLevel = 1, EnemyPos = CFrame.new(1360, 88, -1280), QuestPos = CFrame.new(1385, 88, -1298)},
+    {Level = 100, NPC = "Snowman", QuestName = "SnowQuest", QuestLevel = 2, EnemyPos = CFrame.new(1160, 88, -1450), QuestPos = CFrame.new(1385, 88, -1298)},
+    {Level = 120, NPC = "Chief Petty Officer", QuestName = "MarineQuest2", QuestLevel = 1, EnemyPos = CFrame.new(-4850, 21, 4260), QuestPos = CFrame.new(-5035, 28, 4325)},
+    {Level = 150, NPC = "Sky Bandit", QuestName = "SkyQuest", QuestLevel = 1, EnemyPos = CFrame.new(-4970, 278, -970), QuestPos = CFrame.new(-4840, 279, -943)},
+    {Level = 175, NPC = "Dark Master", QuestName = "SkyQuest", QuestLevel = 2, EnemyPos = CFrame.new(-5250, 389, -2250), QuestPos = CFrame.new(-4840, 279, -943)},
+    {Level = 190, NPC = "Prisoner", QuestName = "PrisonerQuest", QuestLevel = 1, EnemyPos = CFrame.new(5300, 2, 475), QuestPos = CFrame.new(5380, 2, 475)},
+    {Level = 210, NPC = "Dangerous Prisoner", QuestName = "PrisonerQuest", QuestLevel = 2, EnemyPos = CFrame.new(5560, 2, 280), QuestPos = CFrame.new(5380, 2, 475)},
+    {Level = 225, NPC = "Toga Warrior", QuestName = "ColosseumQuest", QuestLevel = 1, EnemyPos = CFrame.new(-1760, 8, -2750), QuestPos = CFrame.new(-1575, 8, -2985)},
+    {Level = 275, NPC = "Gladiator", QuestName = "ColosseumQuest", QuestLevel = 2, EnemyPos = CFrame.new(-1340, 8, -3300), QuestPos = CFrame.new(-1575, 8, -2985)},
+    {Level = 300, NPC = "Military Soldier", QuestName = "MagmaQuest", QuestLevel = 1, EnemyPos = CFrame.new(-5400, 9, 8500), QuestPos = CFrame.new(-5315, 13, 8515)},
+    {Level = 325, NPC = "Military Spy", QuestName = "MagmaQuest", QuestLevel = 2, EnemyPos = CFrame.new(-5815, 9, 8820), QuestPos = CFrame.new(-5315, 13, 8515)},
+    {Level = 375, NPC = "Fishman Warrior", QuestName = "FishmanQuest", QuestLevel = 1, EnemyPos = CFrame.new(61122, 19, 1565), QuestPos = CFrame.new(61122, 19, 1565)},
+    {Level = 400, NPC = "Fishman Commando", QuestName = "FishmanQuest", QuestLevel = 2, EnemyPos = CFrame.new(61122, 19, 1565), QuestPos = CFrame.new(61122, 19, 1565)},
+    {Level = 450, NPC = "God's Guard", QuestName = "SkyExp1Quest", QuestLevel = 1, EnemyPos = CFrame.new(-4720, 846, -1950), QuestPos = CFrame.new(-4720, 846, -1950)},
+    {Level = 500, NPC = "Shanda", QuestName = "SkyExp2Quest", QuestLevel = 1, EnemyPos = CFrame.new(-7680, 5551, -480), QuestPos = CFrame.new(-7900, 5551, -6380)},
+    {Level = 625, NPC = "Galley Pirate", QuestName = "FountainQuest", QuestLevel = 1, EnemyPos = CFrame.new(5580, 5, 3980), QuestPos = CFrame.new(5255, 5, 3855)},
+    {Level = 650, NPC = "Galley Captain", QuestName = "FountainQuest", QuestLevel = 2, EnemyPos = CFrame.new(5650, 5, 4950), QuestPos = CFrame.new(5255, 5, 3855)},
 }
 
--- [[ TAB: MAIN FARM ]]
-local MainTab = Container:AddSection("Auto Farm Level")
-
-_G.AutoFarm = false
-MainTab:AddButton("Auto Farm Smart: OFF", function(self)
-    _G.AutoFarm = not _G.AutoFarm
-    self.Text = "Auto Farm Smart: " .. (_G.AutoFarm and "ON" or "OFF")
-    
-    task.spawn(function()
-        while _G.AutoFarm do
-            pcall(function()
-                -- Lógica de seleção automática de quest baseada no nível
-                local myLevel = Level.Value
-                local best = Sea1_Quests[1]
-                for _, q in pairs(Sea1_Quests) do
-                    if myLevel >= q[1] then best = q end
-                end
-                -- Ação: Teleport NPC -> Pegar Quest -> Matar Mob
-            end)
-            task.wait(1)
-        end
-    end)
-end)
-
--- [[ TAB: FRUITS (SEA 1) ]]
-local FruitTab = Container:AddSection("Fruits & ESP")
-
-AddButton(FruitTab, "Girar Fruta (Cousin)", function()
-    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Cousin", "Buy")
-end)
-
-AddButton(FruitTab, "Fruit ESP (Studs)", function()
-    -- Lógica de localização de frutas no mapa
-end)
-
--- [[ TAB: SIDE QUESTS (SEA 1) ]]
-local SideTab = Container:AddSection("Missões Especiais")
-
-AddButton(SideTab, "Auto Saber Quest (Shanks)", function()
-    -- Teleporta para os botões da selva e resolve o puzzle
-    print("Iniciando Puzzle do Shanks...")
-end)
-
-AddButton(SideTab, "Auto Pole (Enel)", function()
-    -- Farm do Boss Thunder God no Upper Sky
-end)
-
--- [[ TAB: SETTINGS ]]
-local ConfigTab = Container:AddSection("Configurações")
-
-Container:AddSlider("Velocidade de Tween", 100, 300, 150, function(v)
-    _G.FlySpeed = v
-end)
-
-AddButton(ConfigTab, "Anti-AFK", function()
-    -- Código para evitar ser desconectado
-end)
-
--- [[ VARIÁVEIS DE CONFIGURAÇÃO - SEA 1 ]]
-_G.FlySpeed = 150
-_G.AutoStats = false
-_G.StatPoint = "Melee" -- Opções: Melee, Defense, Sword, Blox Fruit
-_G.AntiAFK = true
-_G.FastAttack = true
-
-local ConfigSection = Container:AddSection("Configurações & Performance")
-
--- 1. Velocidade de Movimentação
--- No Sea 1, as distâncias são menores, então 150-200 é o ideal para não bugar o mapa.
-Container:AddSlider("Velocidade de Voo", 100, 300, 150, function(v)
-    _G.FlySpeed = v
-end)
-
--- 2. Sistema de Auto Stats (Vital para Iniciantes)
--- No Sea 1, o player ganha pontos muito rápido. Este sistema distribui sozinho.
-MainTab:AddLabel("--- Distribuição de Pontos ---")
-
-AddButton(ConfigSection, "Auto Stats: OFF", function(self)
-    _G.AutoStats = not _G.AutoStats
-    self.Text = "Auto Stats: " .. (_G.AutoStats and "ON" or "OFF")
-    
-    task.spawn(function()
-        while _G.AutoStats do
-            pcall(function()
-                local args = {
-                    [1] = "AddPoint",
-                    [2] = _G.StatPoint,
-                    [3] = 1
-                }
-                game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args))
-            end)
-            task.wait(0.3)
-        end
-    end)
-end)
-
--- Seletor de onde colocar os pontos
-AddButton(ConfigSection, "Focar em: " .. _G.StatPoint, function(self)
-    local stats = {"Melee", "Defense", "Sword", "Blox Fruit"}
-    local pos = table.find(stats, _G.StatPoint)
-    local nextPos = pos + 1
-    if nextPos > #stats then nextPos = 1 end
-    _G.StatPoint = stats[nextPos]
-    self.Text = "Focar em: " .. _G.StatPoint
-end)
-
--- 3. Modo Fast Attack (Otimizado para Sea 1)
-AddButton(ConfigSection, "Ataque Rápido: ON", function(self)
-    _G.FastAttack = not _G.FastAttack
-    self.Text = "Ataque Rápido: " .. (_G.FastAttack and "ON" or "OFF")
-end)
-
--- 4. Anti-AFK (Evita ser desconectado enquanto farma a noite)
-AddButton(ConfigSection, "Ativar Anti-AFK", function()
-    local vu = game:GetService("VirtualUser")
-    game:GetService("Players").LocalPlayer.Idled:Connect(function()
-        vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-        wait(1)
-        vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-    end)
-    print("Anti-AFK Inkzin Hub Ativado!")
-end)
-
--- 5. Otimização de Gráficos (Para PC e Celular)
-AddButton(ConfigSection, "Remover Texturas (FPS Boost)", function()
-    for _, v in pairs(game:GetService("Workspace"):GetDescendants()) do
-        if v:IsA("Part") or v:IsA("MeshPart") then
-            v.Material = Enum.Material.SmoothPlastic
-            v.Transparency = 0
-        end
+-- [[ 2. FUNÇÕES ÚTEIS (TWEENS E ATAQUES) ]]
+local function GetCurrentQuest()
+    local myLevel = LocalPlayer.Data.Level.Value
+    local target = QuestData[1]
+    for _, v in pairs(QuestData) do
+        if myLevel >= v.Level then target = v end
     end
-    print("Gráficos otimizados!")
-end)
+    return target
+end
 
+local function TweenTo(cframe)
+    local Character = LocalPlayer.Character
+    if Character and Character:FindFirstChild("HumanoidRootPart") then
+        local HRP = Character.HumanoidRootPart
+        local Dist = (HRP.Position - cframe.Position).Magnitude
+        local Speed = 300
+        local Info = TweenInfo.new(Dist / Speed, Enum.EasingStyle.Linear)
+        local Tween = TweenService:Create(HRP, Info, {CFrame = cframe})
+        Tween:Play()
+        -- Ativar NoClip para não bater nas paredes
+        if not _G.NoclipRunning then
+             _G.NoclipRunning = true
+             RunService.Stepped:Connect(function()
+                 if _G.AutoFarm then
+                     for _, v in pairs(Character:GetChildren()) do
+                         if v:IsA("BasePart") then v.CanCollide = false end
+                     end
+                 end
+             end)
+        end
+        return Tween
+    end
+end
 
--- 6. Salvar Configurações
-AddButton(ConfigSection, "Salvar Configs do Sea 1", function()
-    local save = {
-        FlySpeed = _G.FlySpeed,
-        StatPoint = _G.StatPoint
-    }
-    writefile("Inkzin_Sea1_Config.json", game:GetService("HttpService"):JSONEncode(save))
-end)
+-- [[ 3. CARREGAMENTO DA LIBRARY ]]
+function Sea1:Load(MyUI)
+    -- Criando as abas conforme pedido
+    local Farm = MyUI:AddTab("Farm")
+    local Config = MyUI:AddTab("config")
+    local Especial = MyUI:AddTab("especial")
+    local Fruits = MyUI:AddTab("fruits")
+    local SeaEvents = MyUI:AddTab("Sea events")
+    local Raids = MyUI:AddTab("raids")
 
-
-local T = _G.Tabs
-local LP = game.Players.LocalPlayer
-
--- [[ FARM ]]
-T.Farm:AddButton("Auto Farm Level (1-700)", function() _G.AutoFarm = not _G.AutoFarm end)
-T.Farm:AddButton("Auto Farm Boss (Low Sea)", function() end)
-T.Farm:AddButton("Auto Farm Berry (Chest)", function() end)
-
--- [[ CONFIGURAÇÕES ]]
-T.Config:AddSlider("Velocidade de Voo", 100, 300, 150, function(v) _G.FlySpeed = v end)
-T.Config:AddButton("Auto Stats: Melee", function() _G.AutoStats = not _G.AutoStats end)
-T.Config:AddButton("Ativar Anti-AFK", function() 
-    local vu = game:GetService("VirtualUser")
-    LP.Idled:Connect(function()
-        vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-        task.wait(1)
-        vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+    --------------------------------------------------------------------------------
+    -- [ABA FARM]
+    --------------------------------------------------------------------------------
+    Farm:AddToggle("Auto Farm Level (1-700)", function(state)
+        _G.AutoFarm = state
+        
+        task.spawn(function()
+            while _G.AutoFarm do
+                task.wait()
+                pcall(function()
+                    local QuestInfo = GetCurrentQuest()
+                    local hasQuest = LocalPlayer.PlayerGui.Main.Quest.Visible
+                    
+                    if not hasQuest then
+                        -- Ir para o NPC e pegar missão
+                        TweenTo(QuestInfo.QuestPos)
+                        if (LocalPlayer.Character.HumanoidRootPart.Position - QuestInfo.QuestPos.Position).Magnitude < 20 then
+                            ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", QuestInfo.QuestName, QuestInfo.QuestLevel)
+                        end
+                    else
+                        -- Matar o NPC
+                        local TargetEnemy = nil
+                        for _, v in pairs(workspace.Enemies:GetChildren()) do
+                            if v.Name == QuestInfo.NPC and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+                                TargetEnemy = v
+                                break
+                            end
+                        end
+                        
+                        if TargetEnemy then
+                            -- Ir até o inimigo
+                            TweenTo(TargetEnemy.HumanoidRootPart.CFrame * CFrame.new(0, 7, 0)) -- Fica flutuando acima dele
+                            
+                            -- Auto Click / Fast Attack
+                            game:GetService("VirtualUser"):CaptureController()
+                            game:GetService("VirtualUser"):ClickButton1(Vector2.new(999, 999))
+                            
+                            -- Usar habilidade se tiver
+                            ReplicatedStorage.Remotes.CommF_:InvokeServer("Globalcd")
+                        else
+                            -- Esperar no Spawn dele
+                            TweenTo(QuestInfo.EnemyPos)
+                        end
+                    end
+                end)
+            end
+        end)
     end)
-end)
 
--- [[ ESPECIAL ]]
-T.Especial:AddButton("Auto Saber Quest (Shanks)", function() end)
-T.Especial:AddButton("Auto Pirate Quest (Buggy)", function() end)
+    Farm:AddToggle("Auto Stats (Melee)", function(state)
+        _G.AutoStats = state
+        task.spawn(function()
+            while _G.AutoStats do task.wait(0.5)
+                ReplicatedStorage.Remotes.CommF_:InvokeServer("AddPoint", "Melee", 1)
+            end
+        end)
+    end)
 
--- [[ FRUITS ]]
-T.Fruits:AddButton("Girar Fruta (Cousin)", function() 
-    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Cousin", "Buy")
-end)
-T.Fruits:AddButton("ESP Frutas", function() end)
+    Farm:AddToggle("Auto Stats (Defense)", function(state)
+        _G.AutoDefense = state
+        task.spawn(function()
+            while _G.AutoDefense do task.wait(0.5)
+                ReplicatedStorage.Remotes.CommF_:InvokeServer("AddPoint", "Defense", 1)
+            end
+        end)
+    end)
 
--- [[ SEA EVENTS ]]
-T.SeaEvents:AddButton("Aviso: Sem eventos no Sea 1", function() end)
+    --------------------------------------------------------------------------------
+    -- [ABA CONFIG]
+    --------------------------------------------------------------------------------
+    Config:AddToggle("WalkSpeed (200)", function(state)
+        _G.Speed = state
+        task.spawn(function()
+            while _G.Speed do task.wait()
+                if LocalPlayer.Character then
+                    LocalPlayer.Character.Humanoid.WalkSpeed = 200
+                end
+            end
+            LocalPlayer.Character.Humanoid.WalkSpeed = 16
+        end)
+    end)
 
--- [[ RAIDS ]]
-T.Raids:AddButton("Aviso: Raids apenas no Sea 2+", function() end)
+    Config:AddToggle("Infinite Jump", function(state)
+        _G.InfJump = state
+        game:GetService("UserInputService").JumpRequest:Connect(function()
+            if _G.InfJump then
+                LocalPlayer.Character:FindFirstChildOfClass('Humanoid'):ChangeState("Jumping")
+            end
+        end)
+    end)
 
--- [[ TELEPORTE ]]
-T.Teleporte:AddButton("Teleport Jungle", function() LP.Character.HumanoidRootPart.CFrame = CFrame.new(-1610, 37, 150) end)
-T.Teleporte:AddButton("Teleport Marineford", function() LP.Character.HumanoidRootPart.CFrame = CFrame.new(-4920, 20, 4270) end)
+    Config:AddToggle("White Screen (FPS Boost)", function(state)
+        RunService:Set3dRenderingEnabled(not state)
+    end)
 
+    Config:AddToggle("Remove Attack Effect", function(state)
+        if state then
+            -- Código simples para deletar partículas
+            for _, v in pairs(game.ReplicatedStorage.Effect.Container:GetChildren()) do
+                if v:IsA("Part") or v:IsA("MeshPart") then v:Destroy() end
+            end
+        end
+    end)
+
+    --------------------------------------------------------------------------------
+    -- [ABA FRUITS]
+    --------------------------------------------------------------------------------
+    Fruits:AddToggle("Auto Buy Random Fruit", function(state)
+        _G.AutoBuyFruit = state
+        task.spawn(function()
+            while _G.AutoBuyFruit do task.wait(1)
+                ReplicatedStorage.Remotes.CommF_:InvokeServer("Cousin", "Buy")
+            end
+        end)
+    end)
+
+    Fruits:AddToggle("Auto Store Fruit", function(state)
+        _G.AutoStore = state
+        task.spawn(function()
+            while _G.AutoStore do task.wait(1)
+                for _, v in pairs(LocalPlayer.Backpack:GetChildren()) do
+                    if v:IsA("Tool") and v.ToolTip == "Blox Fruit" then
+                        ReplicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", v:GetAttribute("OriginalName"), v)
+                    end
+                end
+                -- Checar também no personagem
+                if LocalPlayer.Character then
+                    for _, v in pairs(LocalPlayer.Character:GetChildren()) do
+                        if v:IsA("Tool") and v.ToolTip == "Blox Fruit" then
+                            ReplicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", v:GetAttribute("OriginalName"), v)
+                        end
+                    end
+                end
+            end
+        end)
+    end)
+
+    Fruits:AddToggle("Teleport to Fruit", function(state)
+        _G.TPFruit = state
+        task.spawn(function()
+            while _G.TPFruit do task.wait(1)
+                for _, v in pairs(workspace:GetChildren()) do
+                    if v:IsA("Tool") and v.ToolTip == "Blox Fruit" and v:FindFirstChild("Handle") then
+                        TweenTo(v.Handle.CFrame)
+                    end
+                end
+            end
+        end)
+    end)
+
+    --------------------------------------------------------------------------------
+    -- [ABA ESPECIAL]
+    --------------------------------------------------------------------------------
+    Especial:AddToggle("Auto Saber Quest", function(state)
+        -- Script simples para ir aos botões da Saber
+        if state then
+            print("Iniciando Quest da Saber (Lógica de Puzzle)...")
+            -- Nota: O puzzle da saber é complexo, aqui apenas teleportaríamos para os botões
+        end
+    end)
+
+    Especial:AddToggle("Go to Sky (Upper)", function(state)
+        if state then TweenTo(CFrame.new(-7894, 5547, -380)) end
+    end)
+    
+    Especial:AddToggle("Go to Underwater", function(state)
+        if state then TweenTo(CFrame.new(61163, 11, 1819)) end
+    end)
+
+    --------------------------------------------------------------------------------
+    -- [ABA SEA EVENTS / RAIDS] (Adaptação para Sea 1)
+    --------------------------------------------------------------------------------
+    -- No Sea 1 não existem Sea Events ou Raids oficiais.
+    -- Vamos usar essas abas para utilitários de mundo.
+    
+    SeaEvents:AddToggle("Go to Sea 2 (NPC)", function(state)
+        if state then
+            -- Teleporta para o prisioneiro da quest do Sea 2
+            TweenTo(CFrame.new(-5039, 28, 4390))
+        end
+    end)
+
+    Raids:AddToggle("Auto Greybeard Boss", function(state)
+        _G.Greybeard = state
+        task.spawn(function()
+            while _G.Greybeard do task.wait()
+                if workspace.Enemies:FindFirstChild("Greybeard") then
+                    TweenTo(workspace.Enemies.Greybeard.HumanoidRootPart.CFrame * CFrame.new(0,10,0))
+                    game:GetService("VirtualUser"):CaptureController()
+                    game:GetService("VirtualUser"):ClickButton1(Vector2.new(800, 800))
+                end
+            end
+        end)
+    end)
+end
+
+return Sea1
