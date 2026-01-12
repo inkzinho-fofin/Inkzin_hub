@@ -1,0 +1,235 @@
+local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local Library = {
+    Theme = {
+        Background = Color3.fromRGB(0, 0, 0),      -- Fundo Preto
+        Secondary = Color3.fromRGB(25, 10, 40),    -- Roxo Escuro
+        Accent = Color3.fromRGB(160, 100, 255),    -- Roxo Claro
+        Text = Color3.fromRGB(255, 255, 255),
+        Border = Color3.fromRGB(60, 20, 100)
+    },
+    Elements = {}
+}
+
+-- Auxiliar para Animações
+function Library:Tween(obj, prop, goal, duration)
+    TweenService:Create(obj, TweenInfo.new(duration or 0.3, Enum.EasingStyle.Quad), goal):Play()
+end
+
+function Library:CreateWindow(title)
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "PurpleLib_UI"
+    ScreenGui.Parent = game:GetService("CoreGui")
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    local Main = Instance.new("Frame")
+    Main.Name = "Main"
+    Main.Parent = ScreenGui
+    Main.BackgroundColor3 = self.Theme.Background
+    Main.Position = UDim2.new(0.5, -250, 0.5, -175)
+    Main.Size = UDim2.new(0, 500, 0, 350)
+    Main.ClipsDescendants = true
+
+    -- Border e Arredondamento
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 10)
+    Corner.Parent = Main
+
+    local Stroke = Instance.new("UIStroke")
+    Stroke.Color = self.Theme.Border
+    Stroke.Thickness = 1.8
+    Stroke.Parent = Main
+
+    -- Barra Superior
+    local TopBar = Instance.new("Frame")
+    TopBar.Size = UDim2.new(1, 0, 0, 40)
+    TopBar.BackgroundColor3 = self.Theme.Secondary
+    TopBar.Parent = Main
+
+    local Title = Instance.new("TextLabel")
+    Title.Text = "  " .. title
+    Title.Size = UDim2.new(1, 0, 1, 0)
+    Title.BackgroundTransparency = 1
+    Title.TextColor3 = self.Theme.Accent
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 18
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.Parent = TopBar
+
+    -- Container de Abas
+    local TabContent = Instance.new("Frame")
+    TabContent.Name = "TabContent"
+    TabContent.Position = UDim2.new(0, 0, 0, 45)
+    TabContent.Size = UDim2.new(1, 0, 1, -45)
+    TabContent.BackgroundTransparency = 1
+    TabContent.Parent = Main
+
+    local Layout = Instance.new("UIListLayout")
+    Layout.Parent = TabContent
+    Layout.Padding = UDim.new(0, 10)
+    Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+    local Window = {}
+
+    -- Função de Seção (Agrupamento)
+    function Window:AddSection(name)
+        local SectionFrame = Instance.new("Frame")
+        SectionFrame.Size = UDim2.new(0.95, 0, 0, 120)
+        SectionFrame.BackgroundColor3 = Library.Theme.Secondary
+        SectionFrame.BackgroundTransparency = 0.5
+        SectionFrame.Parent = TabContent
+
+        Instance.new("UICorner").Parent = SectionFrame
+        local SectionStroke = Instance.new("UIStroke")
+        SectionStroke.Color = Library.Theme.Border
+        SectionStroke.Transparency = 0.5
+        SectionStroke.Parent = SectionFrame
+
+        local SectionTitle = Instance.new("TextLabel")
+        SectionTitle.Text = name:upper()
+        SectionTitle.Size = UDim2.new(1, -10, 0, 25)
+        SectionTitle.BackgroundTransparency = 1
+        SectionTitle.TextColor3 = Library.Theme.Accent
+        SectionTitle.Font = Enum.Font.GothamBold
+        SectionTitle.TextSize = 12
+        SectionTitle.Parent = SectionFrame
+
+        local ElementLayout = Instance.new("UIListLayout")
+        ElementLayout.Parent = SectionFrame
+        ElementLayout.Padding = UDim.new(0, 5)
+        ElementLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+        local Section = {}
+
+        -- Botão
+        function Section:AddButton(text, callback)
+            local Btn = Instance.new("TextButton")
+            Btn.Size = UDim2.new(0.9, 0, 0, 30)
+            Btn.BackgroundColor3 = Library.Theme.Background
+            Btn.Text = text
+            Btn.TextColor3 = Library.Theme.Text
+            Btn.Font = Enum.Font.Gotham
+            Btn.TextSize = 14
+            Btn.Parent = SectionFrame
+
+            local BCorn = Instance.new("UICorner")
+            BCorn.CornerRadius = UDim.new(0, 6)
+            BCorn.Parent = Btn
+
+            Btn.MouseButton1Click:Connect(callback)
+            Btn.MouseEnter:Connect(function()
+                Library:Tween(Btn, "BackgroundColor3", Library.Theme.Accent, 0.2)
+                Btn.TextColor3 = Color3.new(0,0,0)
+            end)
+            Btn.MouseLeave:Connect(function()
+                Library:Tween(Btn, "BackgroundColor3", Library.Theme.Background, 0.2)
+                Btn.TextColor3 = Library.Theme.Text
+            end)
+        end
+
+        -- Slider
+        function Section:AddSlider(text, min, max, default, callback)
+            local SliderFrame = Instance.new("Frame")
+            SliderFrame.Size = UDim2.new(0.9, 0, 0, 40)
+            SliderFrame.BackgroundTransparency = 1
+            SliderFrame.Parent = SectionFrame
+
+            local Label = Instance.new("TextLabel")
+            Label.Text = text .. ": " .. default
+            Label.Size = UDim2.new(1, 0, 0, 20)
+            Label.TextColor3 = Library.Theme.Text
+            Label.BackgroundTransparency = 1
+            Label.Font = Enum.Font.Gotham
+            Label.Parent = SliderFrame
+
+            local Bar = Instance.new("Frame")
+            Bar.Size = UDim2.new(1, 0, 0, 6)
+            Bar.Position = UDim2.new(0, 0, 0.7, 0)
+            Bar.BackgroundColor3 = Library.Theme.Background
+            Bar.Parent = SliderFrame
+            
+            local Fill = Instance.new("Frame")
+            Fill.Size = UDim2.new((default-min)/(max-min), 0, 1, 0)
+            Fill.BackgroundColor3 = Library.Theme.Accent
+            Fill.Parent = Bar
+
+            -- Lógica Simples de Slider
+            local dragging = false
+            SliderFrame.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
+            end)
+            UIS.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+            end)
+            RunService.RenderStepped:Connect(function()
+                if dragging then
+                    local mousePos = UIS:GetMouseLocation().X
+                    local relativePos = (mousePos - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X
+                    local percent = math.clamp(relativePos, 0, 1)
+                    local value = math.floor(min + (max - min) * percent)
+                    Fill.Size = UDim2.new(percent, 0, 1, 0)
+                    Label.Text = text .. ": " .. value
+                    callback(value)
+                end
+            end)
+        end
+
+        return Section
+    end
+
+    return Window
+end
+
+--- EXEMPLO DE USO (Sistemas Utilitários) ---
+
+local MainWin = Library:CreateWindow("PURPLE HUB")
+local AutoTab = MainWin:AddSection("Automação")
+
+-- Auto Clicker Eficiente
+local autoClickEnabled = false
+local clickDelay = 0.1
+
+AutoTab:AddSlider("Delay do Click", 1, 100, 10, function(v)
+    clickDelay = v / 100
+end)
+
+AutoTab:AddButton("Toggle Auto Click", function()
+    autoClickEnabled = not autoClickEnabled
+    print("AutoClick:", autoClickEnabled)
+    task.spawn(function()
+        while autoClickEnabled do
+            local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
+            if tool then
+                tool:Activate()
+            end
+            task.wait(clickDelay)
+        end
+    end)
+end)
+
+local HunterTab = MainWin:AddSection("Player Hunter")
+
+HunterTab:AddButton("Focar Player Próximo", function()
+    local target = nil
+    local maxDist = 500
+
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local dist = (LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
+            if dist < maxDist then
+                maxDist = dist
+                target = p
+            end
+        end
+    end
+
+    if target then
+        workspace.CurrentCamera.CameraSubject = target.Character.Humanoid
+        print("Caçando: " .. target.Name)
+    end
+end)
+                                   
