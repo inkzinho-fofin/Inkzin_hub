@@ -426,3 +426,49 @@ AddButton(ConfigSection, "Salvar Todas as Configs", function()
     writefile("InkzinHub_Sea3_Config.json", json)
     print("Configurações do Sea 3 salvas!")
 end)
+
+
+local T = _G.Tabs
+local LP = game.Players.LocalPlayer
+
+-- [[ FARM ]]
+T.Farm:AddButton("Auto Farm Level (1500-2800)", function() _G.AutoFarm = not _G.AutoFarm end)
+T.Farm:AddButton("Auto Farm Ossos (Bones)", function() end)
+T.Farm:AddButton("Auto Farm Cake Prince", function() end)
+
+-- [[ CONFIGURAÇÕES ]]
+T.Config:AddSlider("Velocidade de Voo", 100, 350, 200, function(v) _G.FlySpeed = v end)
+T.Config:AddButton("Fast Attack (Ultra)", function() _G.FastAttack = not _G.FastAttack end)
+T.Config:AddButton("Ativar Anti-AFK", function() 
+    local vu = game:GetService("VirtualUser")
+    LP.Idled:Connect(function()
+        vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+    end)
+end)
+
+-- [[ ESPECIAL ]]
+T.Especial:AddButton("Auto Elite Hunter (Yama)", function() end)
+T.Especial:AddButton("Auto Tushita Quest", function() end)
+T.Especial:AddButton("Auto Soul Guitar Quest", function() end)
+
+-- [[ FRUITS ]]
+T.Fruits:AddButton("Girar Fruta (Gacha)", function() 
+    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Cousin", "Buy")
+end)
+T.Fruits:AddButton("Auto Store Fruits", function() end)
+
+-- [[ SEA EVENTS ]]
+T.SeaEvents:AddButton("ESP Mirage Island", function() end)
+T.SeaEvents:AddButton("Auto Pirate Raid (Castle)", function() end)
+T.SeaEvents:AddButton("Terror Shark Tracker", function() end)
+
+-- [[ RAIDS ]]
+T.Raids:AddButton("Auto Start Raid (Castle)", function() end)
+T.Raids:AddButton("Auto Kill Raid Boss", function() end)
+
+-- [[ TELEPORTE ]]
+T.Teleporte:AddButton("Teleport Castle on Sea", function() LP.Character.HumanoidRootPart.CFrame = CFrame.new(-5000, 315, -3000) end)
+T.Teleporte:AddButton("Teleport Mansion (Turtle)", function() LP.Character.HumanoidRootPart.CFrame = CFrame.new(-12465, 375, -7560) end)
+T.Teleporte:AddButton("Teleport Tiki Outpost", function() LP.Character.HumanoidRootPart.CFrame = CFrame.new(-16200, 15, 1000) end)
