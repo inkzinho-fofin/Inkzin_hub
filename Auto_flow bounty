@@ -1,0 +1,122 @@
+local FlowLib = {}
+
+function FlowLib:CreateWindow(hubName)
+    -- Instância Principal
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "FlowUI"
+    ScreenGui.Parent = game.CoreGui
+
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, 450, 0, 300)
+    MainFrame.Position = UDim2.new(0.5, -225, 0.5, -150)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(245, 240, 255) -- Roxo bem claro
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Active = true
+    MainFrame.Draggable = true -- Permite mover a janela
+    MainFrame.Parent = ScreenGui
+
+    -- Cantos arredondados
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 10)
+    UICorner.Parent = MainFrame
+
+    -- Barra de Título (Roxo Flow)
+    local TitleBar = Instance.new("Frame")
+    TitleBar.Size = UDim2.new(1, 0, 0, 35)
+    TitleBar.BackgroundColor3 = Color3.fromRGB(140, 82, 255) -- Roxo vibrante
+    TitleBar.BorderSizePixel = 0
+    TitleBar.Parent = MainFrame
+
+    local TitleCorner = Instance.new("UICorner")
+    TitleCorner.CornerRadius = UDim.new(0, 10)
+    TitleCorner.Parent = TitleBar
+
+    local TitleText = Instance.new("TextLabel")
+    TitleText.Text = hubName
+    TitleText.Size = UDim2.new(1, -20, 1, 0)
+    TitleText.Position = UDim2.new(0, 10, 0, 0)
+    TitleText.BackgroundTransparency = 1
+    TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleText.TextXAlignment = Enum.TextXAlignment.Left
+    TitleText.Font = Enum.Font.GothamBold
+    TitleText.TextSize = 16
+    TitleText.Parent = TitleBar
+
+    -- Container para os botões/opções
+    local Container = Instance.new("ScrollingFrame")
+    Container.Size = UDim2.new(1, -20, 1, -50)
+    Container.Position = UDim2.new(0, 10, 0, 45)
+    Container.BackgroundTransparency = 1
+    Container.BorderSizePixel = 0
+    Container.ScrollBarThickness = 2
+    Container.Parent = MainFrame
+
+    local UIListLayout = Instance.new("UIListLayout")
+    UIListLayout.Padding = UDim.new(0, 8)
+    UIListLayout.Parent = Container
+
+    local Tabs = {}
+
+    -- Função para Criar Botão na Interface
+    function Tabs:CreateButton(text, callback)
+        local Btn = Instance.new("TextButton")
+        Btn.Size = UDim2.new(1, -10, 0, 35)
+        Btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        Btn.Text = text
+        Btn.TextColor3 = Color3.fromRGB(100, 100, 100)
+        Btn.Font = Enum.Font.GothamMedium
+        Btn.TextSize = 14
+        Btn.Parent = Container
+        
+        local BtnCorner = Instance.new("UICorner")
+        BtnCorner.CornerRadius = UDim.new(0, 6)
+        BtnCorner.Parent = Btn
+
+        Btn.MouseButton1Click:Connect(function()
+            Btn.BackgroundColor3 = Color3.fromRGB(230, 220, 255)
+            wait(0.1)
+            Btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            callback()
+        end)
+    end
+
+    return Tabs
+end
+
+-- ==========================================
+-- EXECUTANDO A INTERFACE COM O SEU SCRIPT
+-- ==========================================
+
+-- 1. Aplicar suas configurações originais
+getgenv().config = {
+    ["Team"] = "Pirates",
+    ["Use Race"] = { ["V3"] = true, ["V4"] = true },
+    ["BypassTp"] = true,
+    ["SafeHealth"] = 4000,
+    ["Webhooks"] = { ["Toggle Webhook"] = false, ["Link Webhook"] = "" }
+}
+
+-- 2. Criar a Janela
+local MyUI = FlowLib:CreateWindow("BOUNTY FLOW - LIGHT PURPLE")
+
+-- 3. Adicionar as Funções
+MyUI:CreateButton("Ativar Auto Bounty (SeraHub)", function()
+    print("Iniciando script original...")
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/LumosSera/SeraHub/main/AutoBounty.lua"))()
+end)
+
+MyUI:CreateButton("Trocar para Marines", function()
+    getgenv().config["Team"] = "Marines"
+    print("Time alterado para Marines")
+end)
+
+MyUI:CreateButton("Trocar para Pirates", function()
+    getgenv().config["Team"] = "Pirates"
+    print("Time alterado para Pirates")
+end)
+
+MyUI:CreateButton("Ativar Safe Health (4000)", function()
+    getgenv().config["SafeHealth"] = 4000
+    print("Vida segura definida em 4000")
+end)
