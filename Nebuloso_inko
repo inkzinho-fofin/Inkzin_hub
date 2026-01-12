@@ -1,0 +1,225 @@
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+local Settings = settings()
+
+local player = Players.LocalPlayer
+
+-- Configurações de ColorCorrection (Saturação)
+local colorCorrection = Lighting:FindFirstChild("WDayCorrection") or Instance.new("ColorCorrectionEffect", Lighting)
+colorCorrection.Name = "WDayCorrection"
+colorCorrection.Saturation = 0 -- Médio/Normal por padrão
+
+-- Configurações Padrão
+local DEFAULT_FOG_START = 100
+local DEFAULT_FOG_END = 2000
+local DEFAULT_COLOR = Color3.fromRGB(180, 180, 180)
+local DEFAULT_BRIGHTNESS = 2
+local DEFAULT_TIME = 14
+local TRANSITION_TIME = 3
+
+-- Variáveis de Controle
+local whiteDayActive = false
+local pulseActive = false
+local pulseConn = nil
+local lowPerformanceActive = true
+
+-- Função para suavizar materiais e texturas
+local function applyLowPerformance(state)
+	lowPerformanceActive = state
+	if state then
+		Settings.Rendering.QualityLevel = Enum.QualityLevel.Level01
+		Lighting.GlobalShadows = false
+	else
+		Settings.Rendering.QualityLevel = Enum.QualityLevel.Automatic
+		Lighting.GlobalShadows = true
+	end
+
+	task.spawn(function()
+		local count = 0
+		for _, obj in pairs(workspace:GetDescendants()) do
+			if obj:IsA("BasePart") then
+				count = count + 1
+				obj.Material = state and Enum.Material.SmoothPlastic or Enum.Material.Plastic
+				if count % 100 == 0 then task.wait() end
+			end
+		end
+	end)
+end
+
+local function clearAtmosphere()
+	Lighting.FogStart = 0
+end
+
+local function notify(msg)
+	task.spawn(function()
+		pcall(function()
+			StarterGui:SetCore("SendNotification", {
+				Title = "Clima Dinâmico",
+				Text = msg,
+				Duration = 3
+			})
+		end)
+	end)
+end
+
+local function applySmoothChange(props)
+	local info = TweenInfo.new(TRANSITION_TIME, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+	local tween = TweenService:Create(Lighting, info, props)
+	tween:Play()
+	return tween
+end
+
+-- Função para transição de saturação suave
+local function applySaturation(level)
+	local target = 0
+	if level == "baixo" then
+		target = -0.6 -- Mais acinzentado
+	elseif level == "medio" then
+		target = 0 -- Normal
+	elseif level == "alto" then
+		target = 0.5 -- Cores mais vivas
+	end
+	
+	TweenService:Create(colorCorrection, TweenInfo.new(TRANSITION_TIME, Enum.EasingStyle.Sine), {Saturation = target}):Play()
+end
+
+-- Pulsação Dinâmica
+local function stopPulse()
+	pulseActive = false
+	if pulseConn then pulseConn:Cancel() pulseConn = nil end
+end
+
+local function startPulse()
+	stopPulse()
+	pulseActive = true
+	task.spawn(function()
+		while pulseActive do
+			local t1 = TweenService:Create(Lighting, TweenInfo.new(4, Enum.EasingStyle.Sine), {FogEnd = 300, FogColor = Color3.fromRGB(20, 20, 20)})
+			t1:Play()
+			t1.Completed:Wait()
+			if not pulseActive then break end
+			local t2 = TweenService:Create(Lighting, TweenInfo.new(4, Enum.EasingStyle.Sine), {FogEnd = 600, FogColor = Color3.fromRGB(50, 50, 50)})
+			t2:Play()
+			t2.Completed:Wait()
+		end
+	end)
+end
+
+-- Interface
+local screenGui = Instance.new("ScreenGui", player.PlayerGui)
+screenGui.Name = "FogUI"
+screenGui.ResetOnSpawn = false
+screenGui.Enabled = false
+
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(0, 350, 0, 300)
+frame.Position = UDim2.new(0.5, -175, 0.5, -150)
+frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Instance.new("UICorner", frame)
+
+local list = Instance.new("TextLabel", frame)
+list.Size = UDim2.new(1, -20, 1, -20)
+list.Position = UDim2.new(0, 10, 0, 10)
+list.BackgroundTransparency = 1
+list.TextColor3 = Color3.new(1, 1, 1)
+list.TextSize = 14
+list.Font = Enum.Font.SourceSansBold
+list.TextXAlignment = Enum.TextXAlignment.Left
+list.Text = [[
+COMANDOS DE HORIZONTE:
+
+[ /? ] - Menu de ajuda
+[ .rs ] - Resetar tudo ao padrão
+[ +foc 0-100 ] - Intensidade da neblina
+[ /wday baixa/medio/alto ] - Ajusta a 
+  saturação e tom das cores
+[ /low on/off ] - Otimização de materiais
+
+Clique fora para fechar.
+]]
+
+local bgClose = Instance.new("TextButton", screenGui)
+bgClose.Size = UDim2.new(1, 0, 1, 0)
+bgClose.BackgroundTransparency = 1
+bgClose.Text = ""
+bgClose.ZIndex = 0
+bgClose.Activated:Connect(function() screenGui.Enabled = false end)
+
+-- Comandos
+player.Chatted:Connect(function(msg)
+	local args = string.split(string.lower(msg), " ")
+	
+	if args[1] == "/?" then
+		screenGui.Enabled = true
+		notify("Interface aberta")
+
+	elseif args[1] == "/low" then
+		if args[2] == "on" then
+			applyLowPerformance(true)
+			notify("Otimização Ligada")
+		elseif args[2] == "off" then
+			applyLowPerformance(false)
+			notify("Otimização Desligada")
+		end
+
+	elseif args[1] == "/wday" then
+		local level = args[2]
+		if level == "baixa" or level == "medio" or level == "alto" then
+			applySaturation(level)
+			notify("Saturação definida: " .. level)
+			
+			-- Efeito atmosférico extra dependendo do nível
+			if level == "baixa" then
+				applySmoothChange({Brightness = 1, ClockTime = 16})
+			elseif level == "alto" then
+				applySmoothChange({Brightness = 2.5, ClockTime = 12})
+			else
+				applySmoothChange({Brightness = DEFAULT_BRIGHTNESS, ClockTime = DEFAULT_TIME})
+			end
+		else
+			notify("Use: /wday baixa, medio ou alto")
+		end
+
+	elseif args[1] == "+foc" then
+		local val = tonumber(args[2])
+		if val and val >= 0 and val <= 100 then
+			stopPulse()
+			clearAtmosphere()
+			if val == 0 then
+				applySmoothChange({FogEnd = 100000, FogColor = DEFAULT_COLOR})
+				notify("Horizonte limpo")
+			elseif val == 100 then
+				startPulse()
+				notify("Pulsação Ativada")
+			else
+				local targetEnd = 4000 - (val * 38.8)
+				local colorPower = math.clamp(200 - (val * 1.8), 30, 255)
+				applySmoothChange({
+					FogEnd = targetEnd,
+					FogColor = Color3.fromRGB(colorPower, colorPower, colorPower)
+				})
+				notify("Horizonte: " .. val .. "%")
+			end
+		end
+
+	elseif args[1] == ".rs" then
+		stopPulse()
+		applySaturation("medio")
+		applySmoothChange({
+			FogStart = DEFAULT_FOG_START,
+			FogEnd = DEFAULT_FOG_END,
+			FogColor = DEFAULT_COLOR,
+			Brightness = DEFAULT_BRIGHTNESS,
+			ClockTime = DEFAULT_TIME
+		})
+		notify("Configurações Restauradas")
+	end
+end)
+
+-- Inicialização
+clearAtmosphere()
+applyLowPerformance(true)
+applySaturation("medio")
+notify("Sistema Ativo - Saturação Média")
