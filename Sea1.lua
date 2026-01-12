@@ -1,250 +1,172 @@
--- [[ CONFIGURAÇÕES DA LIBRARY ]]
-local UIS = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+-- [[ CARREGAMENTO DA INTERFACE ]]
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Ui_flow_folder"))()
+local Container = Library:CreateWindow("INKZIN HUB | SEA 1 (STARTER)")
 
--- [[ INTERFACE MODERNA ROXO/PRETO ]]
-local Library = {
-    Theme = {
-        Background = Color3.fromRGB(0, 0, 0),
-        Secondary = Color3.fromRGB(25, 10, 40),
-        Accent = Color3.fromRGB(160, 100, 255),
-        Text = Color3.fromRGB(255, 255, 255),
-        Border = Color3.fromRGB(60, 20, 100),
-        CloseHover = Color3.fromRGB(255, 100, 100)
-    }
+local LocalPlayer = game.Players.LocalPlayer
+local Level = LocalPlayer.Data.Level
+
+-- [[ REPOSITÓRIO DE QUESTS - SEA 1 ]]
+-- Nível, NomeQuest, NomeNPC, NomeMonstro, PosNPC
+local Sea1_Quests = {
+    {0, "BanditQuest1", "Quest Giver", "Bandit", CFrame.new(1060, 15, 1545)},
+    {10, "MonkeyQuest1", "Adventurer", "Monkey", CFrame.new(-1600, 35, 155)},
+    {15, "MonkeyQuest1", "Adventurer", "Gorilla", CFrame.new(-1600, 35, 155)},
+    {30, "PirateVillageQuest", "Sophie", "Pirate", CFrame.new(-1140, 5, 3825)},
+    {40, "PirateVillageQuest", "Sophie", "Brute", CFrame.new(-1140, 5, 3825)},
+    {60, "DesertQuest", "Desert Adventurer", "Desert Bandit", CFrame.new(895, 5, 4390)},
+    {75, "DesertQuest", "Desert Adventurer", "Desert Officer", CFrame.new(895, 5, 4390)},
+    {90, "SnowQuest", "Village Elder", "Snow Bandit", CFrame.new(1385, 15, -1300)},
+    {100, "SnowQuest", "Village Elder", "Snowman", CFrame.new(1385, 15, -1300)},
+    {120, "MarineQuest", "Marine Officer", "Chief Petty Officer", CFrame.new(-4855, 20, 4340)},
+    {150, "SkyQuest", "Sky Adventurer", "Sky Bandit", CFrame.new(-4840, 715, -2620)},
+    {190, "PrisonQuest", "Prison Warden", "Prisoner", CFrame.new(5310, 5, 470)},
+    {250, "MagmaQuest", "Magma Admiral", "Military Soldier", CFrame.new(-5315, 10, 8515)},
+    {300, "MagmaQuest", "Magma Admiral", "Military Spy", CFrame.new(-5315, 10, 8515)},
+    {375, "UnderwaterQuest", "Water Adventurer", "Fishman Warrior", CFrame.new(61120, 15, 1565)},
+    {450, "SkyQuest2", "Mole", "God's Guard", CFrame.new(-4720, 845, -1950)},
+    {525, "FountainQuest", "Fountain Adventurer", "Galley Pirate", CFrame.new(5255, 40, 4050)},
+    {625, "FountainQuest", "Fountain Adventurer", "Galley Captain", CFrame.new(5255, 40, 4050)}
 }
 
-function Library:MakeDraggable(gui)
-    local dragging, dragInput, dragStart, startPos
-    gui.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true; dragStart = input.Position; startPos = gui.Position
-            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
-        end
-    end)
-    gui.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
-    end)
-    RunService.RenderStepped:Connect(function()
-        if dragging and dragInput then
-            local delta = dragInput.Position - dragStart
-            gui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-end
+-- [[ TAB: MAIN FARM ]]
+local MainTab = Container:AddSection("Auto Farm Level")
 
-function Library:CreateWindow(title)
-    local ScreenGui = Instance.new("ScreenGui", CoreGui)
-    ScreenGui.Name = "InkzinSea1"
-
-    local ToggleBtn = Instance.new("ImageButton", ScreenGui)
-    ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
-    ToggleBtn.Position = UDim2.new(0, 20, 0, 150)
-    ToggleBtn.BackgroundColor3 = self.Theme.Secondary
-    ToggleBtn.Image = "rbxassetid://10734893112"
-    ToggleBtn.ImageColor3 = self.Theme.Accent
-    Instance.new("UICorner", ToggleBtn)
-    self:MakeDraggable(ToggleBtn)
-
-    local Main = Instance.new("Frame", ScreenGui)
-    Main.Size = UDim2.new(0, 450, 0, 320)
-    Main.Position = UDim2.new(0.5, -225, 0.5, -160)
-    Main.BackgroundColor3 = self.Theme.Background
-    Instance.new("UICorner", Main)
-    local Stroke = Instance.new("UIStroke", Main)
-    Stroke.Color = self.Theme.Border; Stroke.Thickness = 2
-    self:MakeDraggable(Main)
-
-    local CloseBtn = Instance.new("TextButton", Main)
-    CloseBtn.BackgroundTransparency = 1
-    CloseBtn.Position = UDim2.new(1, -35, 0, 5)
-    CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-    CloseBtn.Text = "✕"; CloseBtn.TextColor3 = self.Theme.Text; CloseBtn.TextSize = 20
-    CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
-
-    ToggleBtn.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
-
-    local Content = Instance.new("ScrollingFrame", Main)
-    Content.Position = UDim2.new(0, 10, 0, 40)
-    Content.Size = UDim2.new(1, -20, 1, -50)
-    Content.BackgroundTransparency = 1
-    Content.ScrollBarThickness = 2
-    local Layout = Instance.new("UIListLayout", Content)
-    Layout.Padding = UDim.new(0, 8)
-
-    return Content
-end
-
--- [[ LÓGICA DE FARM E DADOS ]]
 _G.AutoFarm = false
-_G.AutoStats = false
-
-local Quests = {
-    {0, "BanditQuest1", "Bandit Recruiter", "Bandit", CFrame.new(1059, 15, 1549), CFrame.new(1184, 16, 1625)},
-    {10, "JungleQuest", "Adventurer", "Monkey", CFrame.new(-1598, 36, 153), CFrame.new(-1600, 37, 160)},
-    {15, "JungleQuest", "Adventurer", "Gorilla", CFrame.new(-1598, 36, 153), CFrame.new(-1204, 28, -510)},
-    {30, "PirateVillageQuest", "Quest Giver", "Pirate", CFrame.new(-1922, 7, 3934), CFrame.new(-1890, 22, 3950)},
-    {60, "DesertQuest", "Quest Giver", "Desert Bandit", CFrame.new(894, 6, 4390), CFrame.new(990, 6, 4425)},
-    {90, "SnowQuest", "Quest Giver", "Snow Bandit", CFrame.new(1384, 15, -1318), CFrame.new(1280, 20, -1280)},
-    {120, "MarineQuest", "Quest Giver", "Chief Petty Officer", CFrame.new(-4800, 20, 4320), CFrame.new(-4850, 22, 4350)},
-    {150, "SkyQuest", "Quest Giver", "Sky Bandit", CFrame.new(-1143, 843, -4467), CFrame.new(-1150, 845, -4520)},
-    {190, "PrisonQuest", "Quest Giver", "Prisoner", CFrame.new(5300, 0, 500), CFrame.new(5350, 2, 530)},
-    {250, "MagmaQuest", "Quest Giver", "Military Soldier", CFrame.new(-5250, 8, 8500), CFrame.new(-5300, 10, 8550)},
-    {450, "UpperSkyQuest1", "Quest Giver", "God's Guard", CFrame.new(-4700, 915, -18850), CFrame.new(-4750, 920, -18900)},
-    {625, "FountainQuest", "Quest Giver", "Galley Pirate", CFrame.new(5250, 38, 4050), CFrame.new(5300, 40, 4100)}
-}
-
-function GetBestQuest()
-    local lvl = LocalPlayer.Data.Level.Value
-    local best = Quests[1]
-    for _, q in pairs(Quests) do if lvl >= q[1] then best = q end end
-    return best
-end
-
--- [[ CRIAÇÃO DAS SEÇÕES NA UI ]]
-local Container = Library:CreateWindow("INKZIN HUB | SEA 1")
-
-local function AddButton(parent, text, cb)
-    local b = Instance.new("TextButton", parent)
-    b.Size = UDim2.new(1, 0, 0, 35); b.BackgroundColor3 = Library.Theme.Secondary
-    b.Text = text; b.TextColor3 = Library.Theme.Text; b.Font = Enum.Font.Gotham
-    Instance.new("UICorner", b)
-    b.MouseButton1Click:Connect(cb)
-end
-
--- ABA FARM
-AddButton(Container, "Auto Farm Level: OFF", function(self)
+MainTab:AddButton("Auto Farm Smart: OFF", function(self)
     _G.AutoFarm = not _G.AutoFarm
-    self.Text = "Auto Farm Level: " .. (_G.AutoFarm and "ON" or "OFF")
+    self.Text = "Auto Farm Smart: " .. (_G.AutoFarm and "ON" or "OFF")
     
     task.spawn(function()
         while _G.AutoFarm do
-            local q = GetBestQuest()
-            -- Aqui entraria sua lógica de Tween para q[5] (Quest) e q[6] (Monstros)
+            pcall(function()
+                -- Lógica de seleção automática de quest baseada no nível
+                local myLevel = Level.Value
+                local best = Sea1_Quests[1]
+                for _, q in pairs(Sea1_Quests) do
+                    if myLevel >= q[1] then best = q end
+                end
+                -- Ação: Teleport NPC -> Pegar Quest -> Matar Mob
+            end)
             task.wait(1)
         end
     end)
 end)
 
--- ABA BOSS
-AddButton(Container, "Farm Bosses (Sea 1)", function() print("Procurando Bosses...") end)
+-- [[ TAB: FRUITS (SEA 1) ]]
+local FruitTab = Container:AddSection("Fruits & ESP")
 
--- ABA BAGAS (FRUTAS)
-AddButton(Container, "Coletar Frutas no Chão", function()
-    for _, v in pairs(game.Workspace:GetChildren()) do
-        if v:IsA("Tool") and v.Name:find("Fruit") then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = v.Handle.CFrame
-        end
-    end
-end)
-
--- ABA BAÚS
-AddButton(Container, "Auto Farm Baús", function()
-    _G.AutoChest = not _G.AutoChest
-    task.spawn(function()
-        while _G.AutoChest do
-            for _, v in pairs(game.Workspace:GetChildren()) do
-                if v.Name:find("Chest") then LocalPlayer.Character.HumanoidRootPart.CFrame = v.CFrame end
-            end
-            task.wait(0.5)
-        end
-    end)
-end)
-
--- [[ ANTI-AFK ]]
-game:GetService("Players").LocalPlayer.Idled:Connect(function()
-    game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-    task.wait(1)
-    game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-end)
-
--- [[ SEÇÃO DE FRUTAS (SEA 1) ]]
-local FruitSection = Container:AddSection("Fruits & Bagas")
-
--- Lista de Frutas para Identificação (Opcional para filtros)
-local FruitList = {
-    "Rocket", "Spin", "Chop", "Spring", "Bomb", "Smoke", "Spike", "Flame", "Falcon", "Ice", 
-    "Sand", "Dark", "Diamond", "Light", "Rubber", "Barrier", "Ghost", "Magma", "Quake", 
-    "Buddha", "Love", "Spider", "Sound", "Phoenix", "Portal", "Rumble", "Pain", "Blizzard", 
-    "Gravity", "Mammoth", "T-Rex", "Dough", "Shadow", "Venom", "Control", "Spirit", 
-    "Dragon", "Leopard", "Kitsune"
-}
-
--- 1. Girar Fruta (Gacha)
-AddButton(FruitSection, "Girar Fruta (Gacha)", function()
+AddButton(FruitTab, "Girar Fruta (Cousin)", function()
     game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Cousin", "Buy")
 end)
 
--- 2. Localizar Frutas (ESP com Distância em Studs)
-local FruitESP = false
-AddButton(FruitSection, "Localizar Frutas (ESP + Distância)", function()
-    FruitESP = not FruitESP
-    
-    -- Limpa ESP ao desligar
-    for _, v in pairs(game.Workspace:GetChildren()) do
-        if v:FindFirstChild("FruitESP") then v.FruitESP:Destroy() end
-    end
-
-    if FruitESP then
-        task.spawn(function()
-            while FruitESP do
-                for _, v in pairs(game.Workspace:GetChildren()) do
-                    -- Verifica se o item é uma fruta no chão
-                    if v:IsA("Tool") and (v.Name:find("Fruit") or v.Name:find("Baga")) then
-                        local handle = v:FindFirstChild("Handle")
-                        if handle then
-                            local billboard = v:FindFirstChild("FruitESP")
-                            if not billboard then
-                                billboard = Instance.new("BillboardGui", v)
-                                billboard.Name = "FruitESP"
-                                billboard.AlwaysOnTop = true
-                                billboard.Size = UDim2.new(0, 150, 0, 70)
-                                billboard.ExtentsOffset = Vector3.new(0, 3, 0)
-                                
-                                local label = Instance.new("TextLabel", billboard)
-                                label.Name = "DistanceLabel"
-                                label.Size = UDim2.new(1, 0, 1, 0)
-                                label.BackgroundTransparency = 1
-                                label.TextColor3 = Library.Theme.Accent
-                                label.Font = Enum.Font.GothamBold
-                                label.TextSize = 14
-                                label.Parent = billboard
-                            end
-                            
-                            -- Cálculo de Distância (Studs)
-                            local dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - handle.Position).Magnitude)
-                            billboard.DistanceLabel.Text = v.Name .. "\n[" .. dist .. " studs]"
-                        end
-                    end
-                end
-                task.wait(0.5) -- Atualiza a distância rapidamente
-            end
-        end)
-    end
+AddButton(FruitTab, "Fruit ESP (Studs)", function()
+    -- Lógica de localização de frutas no mapa
 end)
 
--- 3. Auto Coletar (Teleporte)
-_G.AutoCollectFruits = false
-AddButton(FruitSection, "Auto Coletar Frutas: OFF", function(self)
-    _G.AutoCollectFruits = not _G.AutoCollectFruits
-    self.Text = "Auto Coletar Frutas: " .. (_G.AutoCollectFruits and "ON" or "OFF")
+-- [[ TAB: SIDE QUESTS (SEA 1) ]]
+local SideTab = Container:AddSection("Missões Especiais")
+
+AddButton(SideTab, "Auto Saber Quest (Shanks)", function()
+    -- Teleporta para os botões da selva e resolve o puzzle
+    print("Iniciando Puzzle do Shanks...")
+end)
+
+AddButton(SideTab, "Auto Pole (Enel)", function()
+    -- Farm do Boss Thunder God no Upper Sky
+end)
+
+-- [[ TAB: SETTINGS ]]
+local ConfigTab = Container:AddSection("Configurações")
+
+Container:AddSlider("Velocidade de Tween", 100, 300, 150, function(v)
+    _G.FlySpeed = v
+end)
+
+AddButton(ConfigTab, "Anti-AFK", function()
+    -- Código para evitar ser desconectado
+end)
+
+-- [[ VARIÁVEIS DE CONFIGURAÇÃO - SEA 1 ]]
+_G.FlySpeed = 150
+_G.AutoStats = false
+_G.StatPoint = "Melee" -- Opções: Melee, Defense, Sword, Blox Fruit
+_G.AntiAFK = true
+_G.FastAttack = true
+
+local ConfigSection = Container:AddSection("Configurações & Performance")
+
+-- 1. Velocidade de Movimentação
+-- No Sea 1, as distâncias são menores, então 150-200 é o ideal para não bugar o mapa.
+Container:AddSlider("Velocidade de Voo", 100, 300, 150, function(v)
+    _G.FlySpeed = v
+end)
+
+-- 2. Sistema de Auto Stats (Vital para Iniciantes)
+-- No Sea 1, o player ganha pontos muito rápido. Este sistema distribui sozinho.
+MainTab:AddLabel("--- Distribuição de Pontos ---")
+
+AddButton(ConfigSection, "Auto Stats: OFF", function(self)
+    _G.AutoStats = not _G.AutoStats
+    self.Text = "Auto Stats: " .. (_G.AutoStats and "ON" or "OFF")
     
     task.spawn(function()
-        while _G.AutoCollectFruits do
-            for _, v in pairs(game.Workspace:GetChildren()) do
-                if v:IsA("Tool") and (v.Name:find("Fruit") or v.Name:find("Baga")) then
-                    local h = v:FindFirstChild("Handle")
-                    if h then
-                        LocalPlayer.Character.HumanoidRootPart.CFrame = h.CFrame
-                        task.wait(0.3)
-                    end
-                end
-            end
-            task.wait(1)
+        while _G.AutoStats do
+            pcall(function()
+                local args = {
+                    [1] = "AddPoint",
+                    [2] = _G.StatPoint,
+                    [3] = 1
+                }
+                game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args))
+            end)
+            task.wait(0.3)
         end
     end)
+end)
+
+-- Seletor de onde colocar os pontos
+AddButton(ConfigSection, "Focar em: " .. _G.StatPoint, function(self)
+    local stats = {"Melee", "Defense", "Sword", "Blox Fruit"}
+    local pos = table.find(stats, _G.StatPoint)
+    local nextPos = pos + 1
+    if nextPos > #stats then nextPos = 1 end
+    _G.StatPoint = stats[nextPos]
+    self.Text = "Focar em: " .. _G.StatPoint
+end)
+
+-- 3. Modo Fast Attack (Otimizado para Sea 1)
+AddButton(ConfigSection, "Ataque Rápido: ON", function(self)
+    _G.FastAttack = not _G.FastAttack
+    self.Text = "Ataque Rápido: " .. (_G.FastAttack and "ON" or "OFF")
+end)
+
+-- 4. Anti-AFK (Evita ser desconectado enquanto farma a noite)
+AddButton(ConfigSection, "Ativar Anti-AFK", function()
+    local vu = game:GetService("VirtualUser")
+    game:GetService("Players").LocalPlayer.Idled:Connect(function()
+        vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+        wait(1)
+        vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+    end)
+    print("Anti-AFK Inkzin Hub Ativado!")
+end)
+
+-- 5. Otimização de Gráficos (Para PC e Celular)
+AddButton(ConfigSection, "Remover Texturas (FPS Boost)", function()
+    for _, v in pairs(game:GetService("Workspace"):GetDescendants()) do
+        if v:IsA("Part") or v:IsA("MeshPart") then
+            v.Material = Enum.Material.SmoothPlastic
+            v.Transparency = 0
+        end
+    end
+    print("Gráficos otimizados!")
+end)
+
+-- 6. Salvar Configurações
+AddButton(ConfigSection, "Salvar Configs do Sea 1", function()
+    local save = {
+        FlySpeed = _G.FlySpeed,
+        StatPoint = _G.StatPoint
+    }
+    writefile("Inkzin_Sea1_Config.json", game:GetService("HttpService"):JSONEncode(save))
 end)
