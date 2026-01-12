@@ -1,0 +1,335 @@
+--[[
+    ╔══════════════════════════════════════════════════════════╗
+    ║                 FLOW_FRUIT FINDER [PREMIUM]              ║
+    ║          Mantendo todas as funções originais             ║
+    ╚══════════════════════════════════════════════════════════╝
+]]
+
+repeat task.wait() until game:IsLoaded() and game:GetService("Players").LocalPlayer
+
+local Players, ReplicatedStorage, TweenService, HttpService, TeleportService = 
+    game:GetService("Players"), 
+    game:GetService("ReplicatedStorage"),
+    game:GetService("TweenService"),
+    game:GetService("HttpService"),
+    game:GetService("TeleportService")
+
+local plr = Players.LocalPlayer
+
+-- Sistema de Configuração Original (Mantido)
+local Config = setmetatable({
+    AutoFruit = true,
+    AutoStoreFruit = true,
+    FruitLog = {}
+}, {
+    __index = _G,
+    __newindex = function(t, k, v)
+        _G[k] = v
+        rawset(t, k, v)
+    end
+})
+
+-- Funções de Log e Time Originais (Mantidas)
+local function JoinTeam()
+    if plr.Team ~= game.Teams.Marines and plr.Team ~= game.Teams.Pirates then
+        pcall(function()
+            ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_"):InvokeServer("SetTeam", "Marines")
+        end)
+    end
+end
+
+JoinTeam()
+
+local function LoadFruitLog()
+    if isfile("fruitlog.json") then
+        Config.FruitLog = HttpService:JSONDecode(readfile("fruitlog.json"))
+    end
+end
+
+local function SaveFruitLog()
+    writefile("fruitlog.json", HttpService:JSONEncode(Config.FruitLog))
+end
+
+local function LogFruit(fruitName)
+    table.insert(Config.FruitLog, {
+        fruit = fruitName,
+        time = os.date("%Y-%m-%d %H:%M:%S")
+    })
+    SaveFruitLog()
+end
+
+local function FindBasePart(model)
+    for _, v in ipairs(model:GetDescendants()) do
+        if v:IsA("BasePart") then return v end
+    end
+end
+
+-- Lógica de Coleta Original (Mantida)
+local function CollectItem(item)
+    if not item then return false end
+    
+    if item:IsA("Tool") then
+        local handle = item:FindFirstChild("Handle")
+        if handle then
+            handle.CFrame = plr.Character.HumanoidRootPart.CFrame
+            if not item:IsDescendantOf(workspace) then
+                LogFruit(item.Name)
+                return true
+            end
+        end
+    elseif item:IsA("Model") and (item.Name == "Fruit" or item.Name == "fruit") then
+        local basePart = FindBasePart(item)
+        if basePart then
+            local startTime = tick()
+            repeat
+                if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                    plr.Character.HumanoidRootPart.CFrame = CFrame.new(basePart.Position + Vector3.new(0, 3, 0))
+                end
+                task.wait()
+                if not item:IsDescendantOf(workspace) then
+                    LogFruit("Model Fruit")
+                    return true
+                end
+            until tick() - startTime > 10
+        end
+    end
+    return false
+end
+
+-- Nova Interface FLOW [PREMIUM]
+local function CreateUI()
+    local ui = {}
+    local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+    ScreenGui.Name = "flow_fruit_finder"
+
+    local MainFrame = Instance.new("Frame", ScreenGui)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+    MainFrame.Position = UDim2.new(0.5, -150, 0.5, -150)
+    MainFrame.Size = UDim2.new(0, 300, 0, 320)
+    MainFrame.BorderSizePixel = 0
+    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+    
+    -- Borda Neon Blue (Flow Style)
+    local Stroke = Instance.new("UIStroke", MainFrame)
+    Stroke.Color = Color3.fromRGB(0, 170, 255)
+    Stroke.Thickness = 1.5
+    Stroke.Transparency = 0.5
+
+    local TopBar = Instance.new("Frame", MainFrame)
+    TopBar.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    TopBar.Size = UDim2.new(1, 0, 0, 45)
+    TopBar.BorderSizePixel = 0
+    local TopCorner = Instance.new("UICorner", TopBar)
+    TopCorner.CornerRadius = UDim.new(0, 12)
+    
+    local Title = Instance.new("TextLabel", TopBar)
+    Title.BackgroundTransparency = 1
+    Title.Position = UDim2.new(0, 15, 0, 0)
+    Title.Size = UDim2.new(1, -30, 1, 0)
+    Title.Font = Enum.Font.GothamBold
+    Title.Text = "flow_fruit finder"
+    Title.TextColor3 = Color3.fromRGB(0, 170, 255)
+    Title.TextSize = 18
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local ToggleButton = Instance.new("TextButton", MainFrame)
+    ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+    ToggleButton.Position = UDim2.new(0.05, 0, 0, 60)
+    ToggleButton.Size = UDim2.new(0.9, 0, 0, 35)
+    ToggleButton.Font = Enum.Font.GothamBold
+    ToggleButton.Text = "AUTO FINDER: ON"
+    ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleButton.TextSize = 14
+    Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0, 6)
+    
+    local StatusLabel = Instance.new("TextLabel", MainFrame)
+    StatusLabel.BackgroundTransparency = 1
+    StatusLabel.Position = UDim2.new(0.05, 0, 0, 105)
+    StatusLabel.Size = UDim2.new(0.9, 0, 0, 20)
+    StatusLabel.Font = Enum.Font.GothamMedium
+    StatusLabel.Text = "Status: Initializing..."
+    StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    StatusLabel.TextSize = 12
+    StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local LogFrame = Instance.new("ScrollingFrame", MainFrame)
+    LogFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+    LogFrame.Position = UDim2.new(0.05, 0, 0, 135)
+    LogFrame.Size = UDim2.new(0.9, 0, 0, 165)
+    LogFrame.BorderSizePixel = 0
+    LogFrame.ScrollBarThickness = 2
+    LogFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 170, 255)
+    LogFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    Instance.new("UICorner", LogFrame).CornerRadius = UDim.new(0, 8)
+    
+    local LogLayout = Instance.new("UIListLayout", LogFrame)
+    LogLayout.Padding = UDim.new(0, 5)
+    LogLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+    -- Drag System
+    local UserInputService = game:GetService("UserInputService")
+    local dragging, dragStart, startPos
+    TopBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    end)
+    
+    -- Botão Toggle (Mantendo as variáveis originais)
+    ToggleButton.MouseButton1Click:Connect(function()
+        Config.AutoFruit = not Config.AutoFruit
+        Config.AutoStoreFruit = Config.AutoFruit
+        ToggleButton.Text = Config.AutoFruit and "AUTO FINDER: ON" or "AUTO FINDER: OFF"
+        ToggleButton.BackgroundColor3 = Config.AutoFruit and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(60, 60, 65)
+    end)
+    
+    function ui.updateLog()
+        for _, child in ipairs(LogFrame:GetChildren()) do
+            if child:IsA("TextLabel") then child:Destroy() end
+        end
+        
+        local fruitCounts = {}
+        for _, entry in ipairs(Config.FruitLog) do
+            fruitCounts[entry.fruit] = fruitCounts[entry.fruit] or {count = 0, lastTime = entry.time}
+            fruitCounts[entry.fruit].count += 1
+            fruitCounts[entry.fruit].lastTime = entry.time
+        end
+        
+        local sortedFruits = {}
+        for fruit, data in pairs(fruitCounts) do
+            table.insert(sortedFruits, {name = fruit, count = data.count, lastTime = data.lastTime})
+        end
+        
+        table.sort(sortedFruits, function(a, b) return a.lastTime > b.lastTime end)
+        
+        for i, data in ipairs(sortedFruits) do
+            local label = Instance.new("TextLabel", LogFrame)
+            label.BackgroundTransparency = 1
+            label.Size = UDim2.new(0.95, 0, 0, 25)
+            label.Font = Enum.Font.Gotham
+            label.TextColor3 = Color3.fromRGB(255, 255, 255)
+            label.TextSize = 11
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.Text = string.format("[%s] %s x%d", data.lastTime:sub(12), data.name, data.count)
+        end
+    end
+    
+    ui.updateStatus = function(status)
+        StatusLabel.Text = "Status: " .. status
+    end
+    
+    LoadFruitLog()
+    ui.updateLog()
+    
+    return ui
+end
+
+-- Lógica de Auto Store Original (Mantida)
+local function HandleAutoStore(tool)
+    if Config.AutoStoreFruit and tool:IsA("Tool") and tool.Name:find("Fruit") then
+        task.spawn(function()
+            ReplicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", tool:GetAttribute("OriginalName"), tool)
+        end)
+    end
+end
+
+-- Start Script Original (Mantido)
+local function StartFruitFinder()
+    local ui = CreateUI()
+    local lastServerHop = tick()
+    local collecting = false
+    
+    while task.wait() do
+        if Config.AutoFruit and not collecting then
+            pcall(function()
+                local foundFruit = false
+                local collected = false
+                
+                -- Check Tools
+                for _, v in ipairs(workspace:GetChildren()) do
+                    if v:IsA("Tool") and v.Name:find("fruit") then
+                        foundFruit = true
+                        collecting = true
+                        ui.updateStatus("Found Tool: " .. v.Name)
+                        if CollectItem(v) then
+                            collected = true
+                            ui.updateLog()
+                        end
+                        collecting = false
+                        break
+                    end
+                end
+                
+                -- Check Models
+                if not collected then
+                    for _, v in ipairs(workspace:GetChildren()) do
+                        if v:IsA("Model") and (v.Name == "Fruit" or v.Name == "fruit") then
+                            foundFruit = true
+                            collecting = true
+                            ui.updateStatus("Found Model Fruit")
+                            if CollectItem(v) then
+                                collected = true
+                                ui.updateLog()
+                            end
+                            collecting = false
+                            break
+                        end
+                    end
+                end
+                
+                if collected and Config.AutoStoreFruit then
+                    ui.updateStatus("Storing...")
+                    task.wait(1)
+                end
+                
+                -- Server Hop Original (Mantido)
+                if not foundFruit and tick() - lastServerHop >= 3 then
+                    ui.updateStatus("Server Hopping...")
+                    task.wait(1)
+                    lastServerHop = tick()
+                    
+                    local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+                    local server = servers.data[math.random(1, #servers.data)]
+                    if server then
+                        TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id)
+                    end
+                end
+            end)
+        end
+    end
+end
+
+-- Monitoramento de Itens (Mantido)
+task.spawn(function()
+    while task.wait() do
+        if Config.AutoStoreFruit then
+            pcall(function()
+                for _, fr in ipairs(plr.Backpack:GetChildren()) do HandleAutoStore(fr) end
+                for _, fr in ipairs(plr.Character:GetChildren()) do HandleAutoStore(fr) end
+            end)
+        end
+    end
+end)
+
+plr.CharacterAdded:Connect(function(char)
+    char.ChildAdded:Connect(HandleAutoStore)
+end)
+
+if plr.Character then
+    plr.Character.ChildAdded:Connect(HandleAutoStore)
+end
+
+print("flow_fruit finder loaded successfully")
+StartFruitFinder()
+           
