@@ -162,6 +162,7 @@ AddButton(ConfigSection, "Remover Texturas (FPS Boost)", function()
     print("Gráficos otimizados!")
 end)
 
+
 -- 6. Salvar Configurações
 AddButton(ConfigSection, "Salvar Configs do Sea 1", function()
     local save = {
@@ -170,3 +171,45 @@ AddButton(ConfigSection, "Salvar Configs do Sea 1", function()
     }
     writefile("Inkzin_Sea1_Config.json", game:GetService("HttpService"):JSONEncode(save))
 end)
+
+
+local T = _G.Tabs
+local LP = game.Players.LocalPlayer
+
+-- [[ FARM ]]
+T.Farm:AddButton("Auto Farm Level (1-700)", function() _G.AutoFarm = not _G.AutoFarm end)
+T.Farm:AddButton("Auto Farm Boss (Low Sea)", function() end)
+T.Farm:AddButton("Auto Farm Berry (Chest)", function() end)
+
+-- [[ CONFIGURAÇÕES ]]
+T.Config:AddSlider("Velocidade de Voo", 100, 300, 150, function(v) _G.FlySpeed = v end)
+T.Config:AddButton("Auto Stats: Melee", function() _G.AutoStats = not _G.AutoStats end)
+T.Config:AddButton("Ativar Anti-AFK", function() 
+    local vu = game:GetService("VirtualUser")
+    LP.Idled:Connect(function()
+        vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+    end)
+end)
+
+-- [[ ESPECIAL ]]
+T.Especial:AddButton("Auto Saber Quest (Shanks)", function() end)
+T.Especial:AddButton("Auto Pirate Quest (Buggy)", function() end)
+
+-- [[ FRUITS ]]
+T.Fruits:AddButton("Girar Fruta (Cousin)", function() 
+    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Cousin", "Buy")
+end)
+T.Fruits:AddButton("ESP Frutas", function() end)
+
+-- [[ SEA EVENTS ]]
+T.SeaEvents:AddButton("Aviso: Sem eventos no Sea 1", function() end)
+
+-- [[ RAIDS ]]
+T.Raids:AddButton("Aviso: Raids apenas no Sea 2+", function() end)
+
+-- [[ TELEPORTE ]]
+T.Teleporte:AddButton("Teleport Jungle", function() LP.Character.HumanoidRootPart.CFrame = CFrame.new(-1610, 37, 150) end)
+T.Teleporte:AddButton("Teleport Marineford", function() LP.Character.HumanoidRootPart.CFrame = CFrame.new(-4920, 20, 4270) end)
+
