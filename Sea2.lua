@@ -514,3 +514,51 @@ AddButton(FactorySection, "Teleportar para Factory", function()
     LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(432, 204, -429)
 end)
 
+
+local T = _G.Tabs
+local LP = game.Players.LocalPlayer
+
+-- [[ FARM ]]
+T.Farm:AddButton("Auto Farm Level", function() _G.AutoFarm = not _G.AutoFarm end)
+T.Farm:AddButton("Auto Farm Boss", function() end)
+T.Farm:AddButton("Auto Farm Berry", function() end)
+
+-- [[ CONFIGURAÇÕES ]]
+T.Config:AddSlider("Velocidade de Voo", 100, 350, 200, function(v) _G.FlySpeed = v end)
+T.Config:AddButton("Fast Attack: ON", function() _G.FastAttack = not _G.FastAttack end)
+T.Config:AddButton("Ativar Anti-AFK", function() 
+    local vu = game:GetService("VirtualUser")
+    LP.Idled:Connect(function()
+        vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+    end)
+end)
+
+-- [[ ESPECIAL ]]
+T.Especial:AddButton("Auto Rengoku", function() end)
+T.Especial:AddButton("Auto Cyborg (Core Brain)", function() end)
+
+-- [[ FRUITS ]]
+T.Fruits:AddButton("Girar Fruta (Gacha)", function() 
+    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Cousin", "Buy")
+end)
+T.Fruits:AddButton("Auto Store Fruits", function() end)
+
+-- [[ SEA EVENTS ]]
+T.SeaEvents:AddButton("Auto Factory", function() end)
+T.SeaEvents:AddButton("Auto Ship Raid", function() end)
+
+-- [[ RAIDS ]]
+_G.SelectedRaid = "Flame"
+T.Raids:AddButton("Selecionar Raid: " .. _G.SelectedRaid, function(self)
+    local r = {"Flame", "Ice", "Quake", "Light", "Dark", "Spider", "Rumble", "Magma", "Buddha"}
+    local i = table.find(r, _G.SelectedRaid) or 1
+    _G.SelectedRaid = r[i + 1] or r[1]
+    self.Text = "Selecionar Raid: " .. _G.SelectedRaid
+end)
+T.Raids:AddButton("Auto Iniciar Raid", function() end)
+
+-- [[ TELEPORTE ]]
+T.Teleporte:AddButton("Teleport Cafe", function() LP.Character.HumanoidRootPart.CFrame = CFrame.new(-380, 77, 255) end)
+T.Teleporte:AddButton("Teleport Green Zone", function() LP.Character.HumanoidRootPart.CFrame = CFrame.new(-2450, 73, -3000) end)
