@@ -1,3 +1,256 @@
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+
+local FlowLib = {}
+
+-- [CONFIGURAÇÃO DE TEMAS]
+local Themes = {
+	Black = {Main = Color3.fromRGB(10, 10, 10), Sec = Color3.fromRGB(20, 20, 20), Accent = Color3.fromRGB(255, 255, 255)},
+	DarkPurple = {Main = Color3.fromRGB(15, 5, 30), Sec = Color3.fromRGB(25, 10, 50), Accent = Color3.fromRGB(140, 70, 255)},
+	LightPurple = {Main = Color3.fromRGB(40, 25, 65), Sec = Color3.fromRGB(55, 35, 85), Accent = Color3.fromRGB(210, 180, 255)}
+}
+
+function FlowLib:Init(themeName)
+	local theme = Themes[themeName] or Themes.DarkPurple
+	
+	local ScreenGui = Instance.new("ScreenGui")
+	ScreenGui.Name = "flow_blox_fruits"
+	ScreenGui.ResetOnSpawn = false
+	ScreenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+	-- [ORBE CYBERPUNK ARRASTÁVEL]
+	local OpenBtn = Instance.new("TextButton")
+	OpenBtn.Size = UDim2.new(0, 50, 0, 50)
+	OpenBtn.Position = UDim2.new(0, 20, 0, 100)
+	OpenBtn.BackgroundColor3 = theme.Main
+	OpenBtn.Text = "F"
+	OpenBtn.TextColor3 = theme.Accent
+	OpenBtn.Font = Enum.Font.GothamBold
+	OpenBtn.TextSize = 22
+	OpenBtn.Parent = ScreenGui
+	Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
+	local Stroke = Instance.new("UIStroke", OpenBtn)
+	Stroke.Color = theme.Accent
+	Stroke.Thickness = 2
+
+	-- [JANELA PRINCIPAL]
+	local Main = Instance.new("Frame")
+	Main.Size = UDim2.new(0, 550, 0, 350)
+	Main.Position = UDim2.new(0.5, -275, 0.5, -175)
+	Main.BackgroundColor3 = theme.Main
+	Main.BorderSizePixel = 0
+	Main.ClipsDescendants = true
+	Main.Parent = ScreenGui
+	Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
+
+	-- [HEADER ARRASTÁVEL]
+	local Header = Instance.new("Frame")
+	Header.Size = UDim2.new(1, 0, 0, 40)
+	Header.BackgroundColor3 = theme.Sec
+	Header.Parent = Main
+	Instance.new("UICorner", Header)
+
+	local Title = Instance.new("TextLabel")
+	Title.Text = "  FLOW_BLOX_FRUITS"
+	Title.Size = UDim2.new(0.5, 0, 1, 0)
+	Title.BackgroundTransparency = 1
+	Title.TextColor3 = theme.Accent
+	Title.Font = Enum.Font.GothamBold
+	Title.TextSize = 14
+	Title.TextXAlignment = Enum.TextXAlignment.Left
+	Title.Parent = Header
+
+	local Credits = Instance.new("TextLabel")
+	Credits.Text = "by Hatsune_inkyt"
+	Credits.Size = UDim2.new(0, 120, 1, 0)
+	Credits.Position = UDim2.new(1, -160, 0, 0)
+	Credits.BackgroundTransparency = 1
+	Credits.TextColor3 = theme.Accent
+	Credits.TextTransparency = 0.5
+	Credits.Font = Enum.Font.Gotham
+	Credits.TextSize = 12
+	Credits.Parent = Header
+
+	local BreakBtn = Instance.new("TextButton")
+	BreakBtn.Size = UDim2.new(0, 35, 0, 35)
+	BreakBtn.Position = UDim2.new(1, -40, 0, 2)
+	BreakBtn.BackgroundTransparency = 1
+	BreakBtn.Text = "✕"
+	BreakBtn.TextColor3 = theme.Accent
+	BreakBtn.Font = Enum.Font.GothamBold
+	BreakBtn.TextSize = 20
+	BreakBtn.Parent = Header
+
+	-- [CONTAINERS DE ABAS]
+	local Sidebar = Instance.new("ScrollingFrame")
+	Sidebar.Size = UDim2.new(0, 130, 1, -50)
+	Sidebar.Position = UDim2.new(0, 10, 0, 45)
+	Sidebar.BackgroundTransparency = 1
+	Sidebar.ScrollBarThickness = 0
+	Sidebar.Parent = Main
+	Instance.new("UIListLayout", Sidebar).Padding = UDim.new(0, 5)
+
+	local ContentHolder = Instance.new("Frame")
+	ContentHolder.Size = UDim2.new(1, -160, 1, -55)
+	ContentHolder.Position = UDim2.new(0, 150, 0, 45)
+	ContentHolder.BackgroundColor3 = theme.Sec
+	ContentHolder.Parent = Main
+	Instance.new("UICorner", ContentHolder)
+
+	-----------------------------------------------------------
+	-- FUNÇÕES DE ARRASTE (DRAG)
+	-----------------------------------------------------------
+	local function MakeDraggable(obj, dragPart)
+		local dragging, dragInput, dragStart, startPos
+		dragPart.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				dragStart = input.Position
+				startPos = obj.Position
+			end
+		end)
+		UserInputService.InputChanged:Connect(function(input)
+			if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+				local delta = input.Position - dragStart
+				obj.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+			end
+		end)
+		UserInputService.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = false
+			end
+		end)
+	end
+
+	MakeDraggable(Main, Header)
+	MakeDraggable(OpenBtn, OpenBtn)
+
+	-----------------------------------------------------------
+	-- SISTEMA DE ABAS E COMPONENTES
+	-----------------------------------------------------------
+	local Tabs = {}
+	local firstTab = true
+
+	function FlowLib:AddTab(name)
+		local TabBtn = Instance.new("TextButton")
+		TabBtn.Size = UDim2.new(1, 0, 0, 35)
+		TabBtn.BackgroundColor3 = theme.Main
+		TabBtn.Text = name
+		TabBtn.TextColor3 = theme.Accent
+		TabBtn.Font = Enum.Font.GothamSemibold
+		TabBtn.TextSize = 12
+		TabBtn.Parent = Sidebar
+		Instance.new("UICorner", TabBtn).CornerRadius = UDim.new(0, 6)
+		local bStroke = Instance.new("UIStroke", TabBtn)
+		bStroke.Color = theme.Accent
+		bStroke.Thickness = 1
+		bStroke.Transparency = 0.8
+
+		local Page = Instance.new("ScrollingFrame")
+		Page.Size = UDim2.new(1, -10, 1, -10)
+		Page.Position = UDim2.new(0, 5, 0, 5)
+		Page.BackgroundTransparency = 1
+		Page.Visible = false
+		Page.ScrollBarThickness = 2
+		Page.ScrollBarImageColor3 = theme.Accent
+		Page.Parent = ContentHolder
+		Instance.new("UIListLayout", Page).Padding = UDim.new(0, 5)
+
+		if firstTab then
+			Page.Visible = true
+			bStroke.Transparency = 0
+			firstTab = false
+		end
+
+		TabBtn.MouseButton1Click:Connect(function()
+			for _, v in pairs(ContentHolder:GetChildren()) do if v:IsA("ScrollingFrame") then v.Visible = false end end
+			for _, v in pairs(Sidebar:GetChildren()) do if v:IsA("TextButton") then v.UIStroke.Transparency = 0.8 end end
+			Page.Visible = true
+			bStroke.Transparency = 0
+		end)
+
+		local Components = {}
+
+		function Components:AddToggle(text, callback)
+			local Toggle = Instance.new("TextButton")
+			Toggle.Size = UDim2.new(1, 0, 0, 35)
+			Toggle.BackgroundColor3 = theme.Main
+			Toggle.Text = "  " .. text
+			Toggle.TextColor3 = theme.Accent
+			Toggle.Font = Enum.Font.Gotham
+			Toggle.TextSize = 13
+			Toggle.TextXAlignment = Enum.TextXAlignment.Left
+			Toggle.Parent = Page
+			Instance.new("UICorner", Toggle)
+			
+			local Indicator = Instance.new("Frame")
+			Indicator.Size = UDim2.new(0, 20, 0, 20)
+			Indicator.Position = UDim2.new(1, -25, 0.5, -10)
+			Indicator.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+			Indicator.Parent = Toggle
+			Instance.new("UICorner", Indicator).CornerRadius = UDim.new(1, 0)
+
+			local state = false
+			Toggle.MouseButton1Click:Connect(function()
+				state = not state
+				local color = state and theme.Accent or Color3.fromRGB(50, 50, 50)
+				TweenService:Create(Indicator, TweenInfo.new(0.3), {BackgroundColor3 = color}):Play()
+				callback(state)
+			end)
+		end
+
+		return Components
+	end
+
+	-----------------------------------------------------------
+	-- ANIMAÇÕES E FECHAMENTO
+	-----------------------------------------------------------
+	task.spawn(function()
+		while task.wait(1.5) do
+			if OpenBtn.Parent then
+				TweenService:Create(OpenBtn, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Size = UDim2.new(0, 55, 0, 55)}):Play()
+				task.wait(1.5)
+				TweenService:Create(OpenBtn, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {Size = UDim2.new(0, 50, 0, 50)}):Play()
+			end
+		end
+	end)
+
+	OpenBtn.MouseButton1Click:Connect(function()
+		Main.Visible = not Main.Visible
+	end)
+
+	BreakBtn.MouseButton1Click:Connect(function()
+		local t = TweenService:Create(Main, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+			Position = Main.Position + UDim2.new(0, 0, 1, 50),
+			Rotation = math.random(-20, 20),
+			BackgroundTransparency = 1
+		})
+		t:Play()
+		TweenService:Create(OpenBtn, TweenInfo.new(0.3), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+		t.Completed:Connect(function() ScreenGui:Destroy() end)
+	end)
+
+	return FlowLib
+end
+
+-- [EXECUÇÃO E CRIAÇÃO DAS ABAS]
+local MyUI = FlowLib:Init("DarkPurple")
+
+local Farm = MyUI:AddTab("Farm")
+local Config = MyUI:AddTab("config")
+local Especial = MyUI:AddTab("especial")
+local Fruits = MyUI:AddTab("fruits")
+local SeaEvents = MyUI:AddTab("Sea events")
+local Raids = MyUI:AddTab("raids")
+
+-- Exemplo de como adicionar um Toggle:
+Farm:AddToggle("Auto Farm Level", function(s)
+	print("Auto Farm: ", s)
+end)
+
+
+
 local Sea1 = {}
 
 local Players = game:GetService("Players")
