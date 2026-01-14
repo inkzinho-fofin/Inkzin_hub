@@ -1,335 +1,205 @@
 --[[
     ╔══════════════════════════════════════════════════════════╗
-    ║                 FLOW_FRUIT FINDER [PREMIUM]              ║
-    ║          Mantendo todas as funções originais             ║
+    ║                 FLOW_FRUIT FINDER [V3]                   ║
+    ║          Interface + Quick Chat + Stickers               ║
     ╚══════════════════════════════════════════════════════════╝
 ]]
 
 repeat task.wait() until game:IsLoaded() and game:GetService("Players").LocalPlayer
 
-local Players, ReplicatedStorage, TweenService, HttpService, TeleportService = 
+local Players, ReplicatedStorage, TweenService, HttpService, TeleportService, UserInputService = 
     game:GetService("Players"), 
     game:GetService("ReplicatedStorage"),
     game:GetService("TweenService"),
     game:GetService("HttpService"),
-    game:GetService("TeleportService")
+    game:GetService("TeleportService"),
+    game:GetService("UserInputService")
 
 local plr = Players.LocalPlayer
+local TextChatService = game:GetService("TextChatService")
+_G.AutoFruit = true
 
--- Sistema de Configuração Original (Mantido)
-local Config = setmetatable({
-    AutoFruit = true,
-    AutoStoreFruit = true,
-    FruitLog = {}
-}, {
-    __index = _G,
-    __newindex = function(t, k, v)
-        _G[k] = v
-        rawset(t, k, v)
-    end
-})
+-- UI Setup
+local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+ScreenGui.Name = "FlowFruitV3"
 
--- Funções de Log e Time Originais (Mantidas)
-local function JoinTeam()
-    if plr.Team ~= game.Teams.Marines and plr.Team ~= game.Teams.Pirates then
-        pcall(function()
-            ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_"):InvokeServer("SetTeam", "Marines")
-        end)
-    end
-end
+----------------------------------------------------------------
+-- SISTEMA DE MENSAGENS RÁPIDAS (CANTO INFERIOR DIREITO)
+----------------------------------------------------------------
 
-JoinTeam()
+local QuickChatFrame = Instance.new("Frame", ScreenGui)
+QuickChatFrame.Size = UDim2.new(0, 180, 0, 150)
+QuickChatFrame.Position = UDim2.new(1, -190, 1, -160)
+QuickChatFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+QuickChatFrame.BorderSizePixel = 0
+Instance.new("UICorner", QuickChatFrame).CornerRadius = UDim.new(0, 8)
+local ChatStroke = Instance.new("UIStroke", QuickChatFrame)
+ChatStroke.Color = Color3.fromRGB(0, 170, 255)
+ChatStroke.Transparency = 0.6
 
-local function LoadFruitLog()
-    if isfile("fruitlog.json") then
-        Config.FruitLog = HttpService:JSONDecode(readfile("fruitlog.json"))
-    end
-end
+-- Sticker Principal
+local Sticker = Instance.new("ImageLabel", QuickChatFrame)
+Sticker.Size = UDim2.new(0, 40, 0, 40)
+Sticker.Position = UDim2.new(0.5, -20, 0, -25)
+Sticker.Image = "rbxassetid://135206467334527" -- ID solicitado
+Sticker.BackgroundTransparency = 1
+Sticker.ZIndex = 2
 
-local function SaveFruitLog()
-    writefile("fruitlog.json", HttpService:JSONEncode(Config.FruitLog))
-end
+local ChatTitle = Instance.new("TextLabel", QuickChatFrame)
+ChatTitle.Size = UDim2.new(1, 0, 0, 25)
+ChatTitle.Position = UDim2.new(0, 0, 0, 15)
+ChatTitle.Text = "QUICK MESSAGES"
+ChatTitle.TextColor3 = Color3.fromRGB(0, 170, 255)
+ChatTitle.Font = Enum.Font.GothamBold
+ChatTitle.TextSize = 10
+ChatTitle.BackgroundTransparency = 1
 
-local function LogFruit(fruitName)
-    table.insert(Config.FruitLog, {
-        fruit = fruitName,
-        time = os.date("%Y-%m-%d %H:%M:%S")
-    })
-    SaveFruitLog()
-end
+local ButtonList = Instance.new("Frame", QuickChatFrame)
+ButtonList.Size = UDim2.new(0.9, 0, 0.7, 0)
+ButtonList.Position = UDim2.new(0.05, 0, 0.25, 0)
+ButtonList.BackgroundTransparency = 1
+local ListLayout = Instance.new("UIListLayout", ButtonList)
+ListLayout.Padding = UDim.new(0, 4)
 
-local function FindBasePart(model)
-    for _, v in ipairs(model:GetDescendants()) do
-        if v:IsA("BasePart") then return v end
-    end
-end
-
--- Lógica de Coleta Original (Mantida)
-local function CollectItem(item)
-    if not item then return false end
+local function CreateQuickMsg(text)
+    local btn = Instance.new("TextButton", ButtonList)
+    btn.Size = UDim2.new(1, 0, 0, 25)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 11
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
     
-    if item:IsA("Tool") then
-        local handle = item:FindFirstChild("Handle")
-        if handle then
-            handle.CFrame = plr.Character.HumanoidRootPart.CFrame
-            if not item:IsDescendantOf(workspace) then
-                LogFruit(item.Name)
-                return true
-            end
-        end
-    elseif item:IsA("Model") and (item.Name == "Fruit" or item.Name == "fruit") then
-        local basePart = FindBasePart(item)
-        if basePart then
-            local startTime = tick()
-            repeat
-                if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                    plr.Character.HumanoidRootPart.CFrame = CFrame.new(basePart.Position + Vector3.new(0, 3, 0))
-                end
-                task.wait()
-                if not item:IsDescendantOf(workspace) then
-                    LogFruit("Model Fruit")
-                    return true
-                end
-            until tick() - startTime > 10
-        end
-    end
-    return false
-end
-
--- Nova Interface FLOW [PREMIUM]
-local function CreateUI()
-    local ui = {}
-    local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
-    ScreenGui.Name = "flow_fruit_finder"
-
-    local MainFrame = Instance.new("Frame", ScreenGui)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-    MainFrame.Position = UDim2.new(0.5, -150, 0.5, -150)
-    MainFrame.Size = UDim2.new(0, 300, 0, 320)
-    MainFrame.BorderSizePixel = 0
-    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
-    
-    -- Borda Neon Blue (Flow Style)
-    local Stroke = Instance.new("UIStroke", MainFrame)
-    Stroke.Color = Color3.fromRGB(0, 170, 255)
-    Stroke.Thickness = 1.5
-    Stroke.Transparency = 0.5
-
-    local TopBar = Instance.new("Frame", MainFrame)
-    TopBar.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    TopBar.Size = UDim2.new(1, 0, 0, 45)
-    TopBar.BorderSizePixel = 0
-    local TopCorner = Instance.new("UICorner", TopBar)
-    TopCorner.CornerRadius = UDim.new(0, 12)
-    
-    local Title = Instance.new("TextLabel", TopBar)
-    Title.BackgroundTransparency = 1
-    Title.Position = UDim2.new(0, 15, 0, 0)
-    Title.Size = UDim2.new(1, -30, 1, 0)
-    Title.Font = Enum.Font.GothamBold
-    Title.Text = "flow_fruit finder"
-    Title.TextColor3 = Color3.fromRGB(0, 170, 255)
-    Title.TextSize = 18
-    Title.TextXAlignment = Enum.TextXAlignment.Left
-    
-    local ToggleButton = Instance.new("TextButton", MainFrame)
-    ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-    ToggleButton.Position = UDim2.new(0.05, 0, 0, 60)
-    ToggleButton.Size = UDim2.new(0.9, 0, 0, 35)
-    ToggleButton.Font = Enum.Font.GothamBold
-    ToggleButton.Text = "AUTO FINDER: ON"
-    ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ToggleButton.TextSize = 14
-    Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(0, 6)
-    
-    local StatusLabel = Instance.new("TextLabel", MainFrame)
-    StatusLabel.BackgroundTransparency = 1
-    StatusLabel.Position = UDim2.new(0.05, 0, 0, 105)
-    StatusLabel.Size = UDim2.new(0.9, 0, 0, 20)
-    StatusLabel.Font = Enum.Font.GothamMedium
-    StatusLabel.Text = "Status: Initializing..."
-    StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    StatusLabel.TextSize = 12
-    StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    local LogFrame = Instance.new("ScrollingFrame", MainFrame)
-    LogFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-    LogFrame.Position = UDim2.new(0.05, 0, 0, 135)
-    LogFrame.Size = UDim2.new(0.9, 0, 0, 165)
-    LogFrame.BorderSizePixel = 0
-    LogFrame.ScrollBarThickness = 2
-    LogFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 170, 255)
-    LogFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    Instance.new("UICorner", LogFrame).CornerRadius = UDim.new(0, 8)
-    
-    local LogLayout = Instance.new("UIListLayout", LogFrame)
-    LogLayout.Padding = UDim.new(0, 5)
-    LogLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
-    -- Drag System
-    local UserInputService = game:GetService("UserInputService")
-    local dragging, dragStart, startPos
-    TopBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = MainFrame.Position
+    btn.MouseButton1Click:Connect(function()
+        if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+            TextChatService.TextChannels.RBXGeneral:SendAsync(text)
+        else
+            ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(text, "All")
         end
     end)
-    UserInputService.InputChanged:Connect(function(input)
+end
+
+-- Mensagens Padrão
+CreateQuickMsg("Flow Finder On! 🍎")
+CreateQuickMsg("Fruit Found! GG")
+CreateQuickMsg("Server Hopping...")
+
+----------------------------------------------------------------
+-- INTERFACE DE STATUS (ORIGINAL ATUALIZADA)
+----------------------------------------------------------------
+
+local OpenBtn = Instance.new("TextButton", ScreenGui)
+OpenBtn.Size = UDim2.new(0, 50, 0, 50)
+OpenBtn.Position = UDim2.new(0, 20, 0.5, 0)
+OpenBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+OpenBtn.Text = "FLOW"
+OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenBtn.Font = Enum.Font.GothamBold
+OpenBtn.TextSize = 12
+Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", OpenBtn).Color = Color3.fromRGB(255, 255, 255)
+
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 220, 0, 180)
+MainFrame.Position = UDim2.new(0.5, -110, 0.5, -90)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+MainFrame.Visible = false
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+local StatusLabel = Instance.new("TextLabel", MainFrame)
+StatusLabel.Size = UDim2.new(0.9, 0, 0, 20)
+StatusLabel.Position = UDim2.new(0.05, 0, 0, 35)
+StatusLabel.Text = "Status: Idle"
+StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+StatusLabel.Font = Enum.Font.GothamMedium
+StatusLabel.TextSize = 12
+StatusLabel.BackgroundTransparency = 1
+
+local LogList = Instance.new("ScrollingFrame", MainFrame)
+LogList.Size = UDim2.new(0.9, 0, 0, 100)
+LogList.Position = UDim2.new(0.05, 0, 0, 60)
+LogList.BackgroundTransparency = 1
+LogList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+LogList.ScrollBarThickness = 2
+Instance.new("UIListLayout", LogList)
+
+-- Draggable Function
+local function MakeDraggable(obj)
+    local dragging, dragStart, startPos
+    obj.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true; dragStart = input.Position; startPos = obj.Position
+        end
+    end)
+    obj.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
-            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            obj.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
-    UserInputService.InputEnded:Connect(function(input)
+    obj.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
     end)
-    
-    -- Botão Toggle (Mantendo as variáveis originais)
-    ToggleButton.MouseButton1Click:Connect(function()
-        Config.AutoFruit = not Config.AutoFruit
-        Config.AutoStoreFruit = Config.AutoFruit
-        ToggleButton.Text = Config.AutoFruit and "AUTO FINDER: ON" or "AUTO FINDER: OFF"
-        ToggleButton.BackgroundColor3 = Config.AutoFruit and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(60, 60, 65)
-    end)
-    
-    function ui.updateLog()
-        for _, child in ipairs(LogFrame:GetChildren()) do
-            if child:IsA("TextLabel") then child:Destroy() end
-        end
-        
-        local fruitCounts = {}
-        for _, entry in ipairs(Config.FruitLog) do
-            fruitCounts[entry.fruit] = fruitCounts[entry.fruit] or {count = 0, lastTime = entry.time}
-            fruitCounts[entry.fruit].count += 1
-            fruitCounts[entry.fruit].lastTime = entry.time
-        end
-        
-        local sortedFruits = {}
-        for fruit, data in pairs(fruitCounts) do
-            table.insert(sortedFruits, {name = fruit, count = data.count, lastTime = data.lastTime})
-        end
-        
-        table.sort(sortedFruits, function(a, b) return a.lastTime > b.lastTime end)
-        
-        for i, data in ipairs(sortedFruits) do
-            local label = Instance.new("TextLabel", LogFrame)
-            label.BackgroundTransparency = 1
-            label.Size = UDim2.new(0.95, 0, 0, 25)
-            label.Font = Enum.Font.Gotham
-            label.TextColor3 = Color3.fromRGB(255, 255, 255)
-            label.TextSize = 11
-            label.TextXAlignment = Enum.TextXAlignment.Left
-            label.Text = string.format("[%s] %s x%d", data.lastTime:sub(12), data.name, data.count)
-        end
-    end
-    
-    ui.updateStatus = function(status)
-        StatusLabel.Text = "Status: " .. status
-    end
-    
-    LoadFruitLog()
-    ui.updateLog()
-    
-    return ui
 end
+MakeDraggable(OpenBtn)
+MakeDraggable(QuickChatFrame) -- Também arrastável
 
--- Lógica de Auto Store Original (Mantida)
-local function HandleAutoStore(tool)
-    if Config.AutoStoreFruit and tool:IsA("Tool") and tool.Name:find("Fruit") then
-        task.spawn(function()
-            ReplicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", tool:GetAttribute("OriginalName"), tool)
-        end)
+OpenBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
+
+----------------------------------------------------------------
+-- LÓGICA DE COLETA (MANTIDA)
+----------------------------------------------------------------
+
+local function Collect(item)
+    if not item then return end
+    StatusLabel.Text = "Status: Collecting " .. item.Name
+    local target = item:IsA("Tool") and item:FindFirstChild("Handle") or item:FindFirstChildWhichIsA("BasePart", true)
+    if target and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+        local startTime = tick()
+        repeat
+            plr.Character.HumanoidRootPart.CFrame = target.CFrame + Vector3.new(0, 3, 0)
+            task.wait()
+        until not item:IsDescendantOf(workspace) or tick() - startTime > 8
+        return not item:IsDescendantOf(workspace)
     end
 end
 
--- Start Script Original (Mantido)
-local function StartFruitFinder()
-    local ui = CreateUI()
-    local lastServerHop = tick()
-    local collecting = false
-    
-    while task.wait() do
-        if Config.AutoFruit and not collecting then
-            pcall(function()
-                local foundFruit = false
-                local collected = false
-                
-                -- Check Tools
-                for _, v in ipairs(workspace:GetChildren()) do
-                    if v:IsA("Tool") and v.Name:find("fruit") then
-                        foundFruit = true
-                        collecting = true
-                        ui.updateStatus("Found Tool: " .. v.Name)
-                        if CollectItem(v) then
-                            collected = true
-                            ui.updateLog()
+task.spawn(function()
+    while task.wait(1) do
+        if _G.AutoFruit then
+            local fruits = {}
+            for _, v in ipairs(workspace:GetChildren()) do
+                if (v:IsA("Tool") and v.Name:lower():find("fruit")) or (v:IsA("Model") and v.Name:lower() == "fruit") then
+                    table.insert(fruits, v)
+                end
+            end
+
+            if #fruits > 0 then
+                for _, fruit in ipairs(fruits) do
+                    Collect(fruit)
+                    task.wait(0.5)
+                    pcall(function()
+                        for _, f in ipairs(plr.Backpack:GetChildren()) do
+                            if f.Name:find("Fruit") then
+                                ReplicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", f:GetAttribute("OriginalName"), f)
+                            end
                         end
-                        collecting = false
+                    end)
+                end
+            else
+                StatusLabel.Text = "Status: No fruits. Hopping..."
+                task.wait(3)
+                local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+                for _, s in ipairs(servers.data) do
+                    if s.playing < s.maxPlayers and s.id ~= game.JobId then
+                        TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id)
                         break
                     end
                 end
-                
-                -- Check Models
-                if not collected then
-                    for _, v in ipairs(workspace:GetChildren()) do
-                        if v:IsA("Model") and (v.Name == "Fruit" or v.Name == "fruit") then
-                            foundFruit = true
-                            collecting = true
-                            ui.updateStatus("Found Model Fruit")
-                            if CollectItem(v) then
-                                collected = true
-                                ui.updateLog()
-                            end
-                            collecting = false
-                            break
-                        end
-                    end
-                end
-                
-                if collected and Config.AutoStoreFruit then
-                    ui.updateStatus("Storing...")
-                    task.wait(1)
-                end
-                
-                -- Server Hop Original (Mantido)
-                if not foundFruit and tick() - lastServerHop >= 3 then
-                    ui.updateStatus("Server Hopping...")
-                    task.wait(1)
-                    lastServerHop = tick()
-                    
-                    local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
-                    local server = servers.data[math.random(1, #servers.data)]
-                    if server then
-                        TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id)
-                    end
-                end
-            end)
-        end
-    end
-end
-
--- Monitoramento de Itens (Mantido)
-task.spawn(function()
-    while task.wait() do
-        if Config.AutoStoreFruit then
-            pcall(function()
-                for _, fr in ipairs(plr.Backpack:GetChildren()) do HandleAutoStore(fr) end
-                for _, fr in ipairs(plr.Character:GetChildren()) do HandleAutoStore(fr) end
-            end)
+            end
         end
     end
 end)
 
-plr.CharacterAdded:Connect(function(char)
-    char.ChildAdded:Connect(HandleAutoStore)
-end)
-
-if plr.Character then
-    plr.Character.ChildAdded:Connect(HandleAutoStore)
-end
-
-print("flow_fruit finder loaded successfully")
-StartFruitFinder()
-           
+print("Flow Fruit V3 Loaded!")
