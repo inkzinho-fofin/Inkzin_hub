@@ -1,0 +1,286 @@
+--[[
+    FLOW FRUIT FINDER - V18 HYBRID
+    - Estética: Premium Image & Neon Edition.
+    - Lógica: Mantém 100% as funções da V16 (Decimais, 5s Hop, Auto-Marines).
+    - UI: Imagens customizadas no fundo e no botão.
+]]
+
+-- Configurações de Identidade
+local UI_TITLE = "FLOW FRUIT FINDER"
+local CREATOR_NAME = "by Hatsune_inkyt"
+local THEME_COLOR = Color3.fromRGB(0, 210, 255)
+local BG_IMAGE_ID = "rbxassetid://135908570815238" 
+local BTN_IMAGE_ID = "rbxassetid://128274027831300" 
+
+-- Impedir múltiplas execuções
+if _G.FruitFinderLoaded then return end
+_G.FruitFinderLoaded = true
+
+-- Serviços
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local ContentProvider = game:GetService("ContentProvider")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualUser = game:GetService("VirtualUser")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+
+-- Anti-AFK
+player.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+-- Auto Join Marines (Função V16)
+task.spawn(function()
+    local joinRemote = ReplicatedStorage:FindFirstChild("CommF_", true)
+    if joinRemote then joinRemote:InvokeServer("SetTeam", "Marines") end
+end)
+
+-----------------------------------------------------------
+-- INTERFACE VISUAL (ESTILIZADA V18)
+-----------------------------------------------------------
+
+local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
+sg.Name = "FlowFruitFinder_Hybrid"
+
+-- Notificação Superior (Estilo V16 com Skin V18)
+local function ShowGlobalNotice(fruitName)
+    local NoticeFrame = Instance.new("Frame", sg)
+    NoticeFrame.Size = UDim2.new(0, 300, 0, 45)
+    NoticeFrame.Position = UDim2.new(0.5, -150, 0, -60)
+    NoticeFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    NoticeFrame.BorderSizePixel = 0
+    NoticeFrame.ZIndex = 100
+    Instance.new("UICorner", NoticeFrame)
+    local ns = Instance.new("UIStroke", NoticeFrame)
+    ns.Color = THEME_COLOR
+    ns.Thickness = 2
+
+    local NoticeText = Instance.new("TextLabel", NoticeFrame)
+    NoticeText.Size = UDim2.new(1, 0, 1, 0)
+    NoticeText.BackgroundTransparency = 1
+    NoticeText.Text = "🍎 FRUTA COLETADA: " .. fruitName:upper()
+    NoticeText.TextColor3 = Color3.new(1, 1, 1)
+    NoticeText.Font = Enum.Font.GothamBold
+    NoticeText.TextSize = 13
+
+    NoticeFrame:TweenPosition(UDim2.new(0.5, -150, 0, 30), "Out", "Back", 0.5, true)
+    task.wait(3)
+    NoticeFrame:TweenPosition(UDim2.new(0.5, -150, 0, -60), "In", "Linear", 0.5, true)
+    game:GetService("Debris"):AddItem(NoticeFrame, 0.6)
+end
+
+-- Frame Principal
+local MainFrame = Instance.new("Frame", sg)
+MainFrame.Size = UDim2.new(0, 350, 0, 380)
+MainFrame.Position = UDim2.new(0.5, -175, 0.5, -190)
+MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
+MainFrame.Active = true
+MainFrame.Draggable = true 
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+
+-- Imagem de Fundo (BG_IMAGE_ID)
+local BgImage = Instance.new("ImageLabel", MainFrame)
+BgImage.Size = UDim2.new(1, 0, 1, 0)
+BgImage.Image = BG_IMAGE_ID
+BgImage.BackgroundTransparency = 0.4
+BgImage.ZIndex = 1
+BgImage.ScaleType = Enum.ScaleType.Stretch
+Instance.new("UICorner", BgImage).CornerRadius = UDim.new(0, 12)
+
+-- Overlay Dark
+local Overlay = Instance.new("Frame", MainFrame)
+Overlay.Size = UDim2.new(1, 0, 1, 0)
+Overlay.BackgroundColor3 = Color3.new(0, 0, 0)
+Overlay.BackgroundTransparency = 0.4
+Overlay.ZIndex = 2
+Instance.new("UICorner", Overlay).CornerRadius = UDim.new(0, 12)
+
+-- Borda Neon
+local MainStroke = Instance.new("UIStroke", MainFrame)
+MainStroke.Color = THEME_COLOR
+MainStroke.Thickness = 2
+MainStroke.Transparency = 0.3
+
+local TitleLabel = Instance.new("TextLabel", MainFrame)
+TitleLabel.Size = UDim2.new(1, 0, 0, 40)
+TitleLabel.Position = UDim2.new(0, 0, 0, 10)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = UI_TITLE
+TitleLabel.TextColor3 = Color3.new(1, 1, 1)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextSize = 20
+TitleLabel.ZIndex = 4
+
+local CreatorLabel = Instance.new("TextLabel", MainFrame)
+CreatorLabel.Size = UDim2.new(1, 0, 0, 20)
+CreatorLabel.Position = UDim2.new(0, 0, 0, 35)
+CreatorLabel.BackgroundTransparency = 1
+CreatorLabel.Text = CREATOR_NAME
+CreatorLabel.TextColor3 = THEME_COLOR
+CreatorLabel.Font = Enum.Font.GothamMedium
+CreatorLabel.TextSize = 11
+CreatorLabel.ZIndex = 4
+
+local StatusLabel = Instance.new("TextLabel", MainFrame)
+StatusLabel.Size = UDim2.new(1, -40, 0, 30)
+StatusLabel.Position = UDim2.new(0, 20, 0, 65)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.TextColor3 = Color3.new(1, 1, 1)
+StatusLabel.Text = "Verificando entrada..."
+StatusLabel.Font = Enum.Font.GothamMedium
+StatusLabel.TextSize = 13
+StatusLabel.ZIndex = 4
+
+-- Barra de Progresso Estilizada
+local BarBack = Instance.new("Frame", MainFrame)
+BarBack.Size = UDim2.new(0, 280, 0, 6)
+BarBack.Position = UDim2.new(0.5, -140, 0, 105)
+BarBack.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+BarBack.ZIndex = 4
+Instance.new("UICorner", BarBack)
+
+local BarFill = Instance.new("Frame", BarBack)
+BarFill.Size = UDim2.new(0, 0, 1, 0)
+BarFill.BackgroundColor3 = THEME_COLOR
+BarFill.ZIndex = 5
+Instance.new("UICorner", BarFill)
+
+local ListFrame = Instance.new("ScrollingFrame", MainFrame)
+ListFrame.Size = UDim2.new(1, -40, 0, 160)
+ListFrame.Position = UDim2.new(0, 20, 0, 185)
+ListFrame.BackgroundTransparency = 0.85
+ListFrame.BackgroundColor3 = Color3.new(0,0,0)
+ListFrame.BorderSizePixel = 0
+ListFrame.ZIndex = 4
+ListFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+ListFrame.ScrollBarThickness = 2
+Instance.new("UIListLayout", ListFrame).Padding = UDim.new(0, 5)
+
+-- Botão Abrir/Fechar com BTN_IMAGE_ID
+local OpenBtn = Instance.new("ImageButton", sg)
+OpenBtn.Size = UDim2.new(0, 50, 0, 50)
+OpenBtn.Position = UDim2.new(0, 20, 0, 20)
+OpenBtn.Image = BTN_IMAGE_ID
+OpenBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+OpenBtn.ZIndex = 10
+Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
+local btnStroke = Instance.new("UIStroke", OpenBtn)
+btnStroke.Color = THEME_COLOR
+btnStroke.Thickness = 2
+
+OpenBtn.MouseButton1Click:Connect(function() 
+    MainFrame.Visible = not MainFrame.Visible 
+end)
+
+-----------------------------------------------------------
+-- FUNÇÕES TÉCNICAS (IGUAIS À V16)
+-----------------------------------------------------------
+
+local function ServerHop()
+    StatusLabel.Text = "RECONECTANDO..."
+    local success, content = pcall(function() 
+        return game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100") 
+    end)
+    if success then
+        local servers = HttpService:JSONDecode(content)
+        for _, s in pairs(servers.data) do
+            if s.playing < s.maxPlayers and s.id ~= game.JobId then
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id, player)
+                return
+            end
+        end
+    end
+end
+
+local function ScanServer()
+    local found = {}
+    local descendants = workspace:GetDescendants()
+    for _, v in ipairs(descendants) do
+        if (v:IsA("Tool") or v:IsA("Model")) and v.Name:lower():find("fruit") then
+            if v:FindFirstChild("Handle") and v.Handle:FindFirstChild("TouchInterest") then
+                if not Players:GetPlayerFromCharacter(v.Parent) then
+                    table.insert(found, v)
+                end
+            end
+        end
+    end
+    return found
+end
+
+-----------------------------------------------------------
+-- LOOP DE EXECUÇÃO (LÓGICA V16)
+-----------------------------------------------------------
+
+task.spawn(function()
+    StatusLabel.Text = "CARREGANDO JOGADOR..."
+    repeat task.wait(0.1) until player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    StatusLabel.Text = "JOGADOR PRONTO!"
+    task.wait(1)
+
+    while true do
+        StatusLabel.Text = "INICIANDO VARREDURA TÉCNICA..."
+        local scanTime = 1.5 
+        local steps = 30
+        for i = 1, steps do
+            local decimalTime = (scanTime - (i/steps * scanTime))
+            StatusLabel.Text = string.format("VARRENDO MAPA: %.2fs", decimalTime)
+            BarFill.Size = UDim2.new(i/steps, 0, 1, 0)
+            BarFill.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+            task.wait(scanTime/steps)
+        end
+
+        local fruits = ScanServer()
+        for _, child in ipairs(ListFrame:GetChildren()) do if child:IsA("TextLabel") then child:Destroy() end end
+
+        if #fruits > 0 then
+            StatusLabel.Text = "FRUTAS DETECTADAS!"
+            ListFrame.CanvasSize = UDim2.new(0, 0, 0, #fruits * 25)
+            BarFill.BackgroundColor3 = THEME_COLOR
+            
+            for i, f in ipairs(fruits) do
+                local fruitName = f.Name
+                local l = Instance.new("TextLabel", ListFrame)
+                l.Size = UDim2.new(0.95, 0, 0, 20); l.Text = "• " .. fruitName:upper()
+                l.TextColor3 = Color3.new(1,1,1); l.BackgroundTransparency = 1; l.Font = Enum.Font.GothamBold; l.TextSize = 11; l.ZIndex = 5
+
+                StatusLabel.Text = "COLETANDO: " .. fruitName:upper()
+                player.Character:PivotTo(f:GetPivot() * CFrame.new(0, 3, 0))
+                task.wait(1)
+                
+                pcall(function() 
+                    ReplicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", fruitName, f) 
+                end)
+                
+                task.spawn(function() ShowGlobalNotice(fruitName) end)
+                task.wait(0.5)
+            end
+        else
+            StatusLabel.Text = "NADA NO SERVIDOR."
+            BarFill.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+            
+            local hopDuration = 5
+            local hopSteps = 100
+            for i = 1, hopSteps do
+                if #ScanServer() > 0 then break end 
+                local remaining = hopDuration - (i/hopSteps * hopDuration)
+                StatusLabel.Text = string.format("SERVER HOP EM: %d s", math.ceil(remaining))
+                BarFill.Size = UDim2.new(i/hopSteps, 0, 1, 0)
+                task.wait(hopDuration/hopSteps)
+                
+                if i == hopSteps then
+                    ServerHop()
+                end
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+ContentProvider:PreloadAsync({BgImage, OpenBtn})
+                                             
