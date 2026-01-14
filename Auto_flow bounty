@@ -1,284 +1,67 @@
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
-local UserInputService = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Library = {}
 
+-- Serviços
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
---------------------------------------------------------------------------------
--- CONFIGURAÇÕES E METADADOS
---------------------------------------------------------------------------------
-local config = {
-    scriptName = "FLOW_BOUNTY",
-    creator = "Hatsune_inkyt",
-    imageID = "rbxassetid://135908570815238",
-    maxServerTime = 90, 
-    attackDistance = 1500,
-    dodgeHealthPercent = 0.2, -- 20% de vida para fugir
-    delays = { m1 = 0.1, skills = 0.3 }
-}
+-- // MÓDULO DE MOVIMENTAÇÃO (TWEENS)
+Library.Movement = {
+    Tween = function(instance, targetCFrame, speed)
+        if not instance or not targetCFrame then return end
+        local root = instance:IsA("BasePart") and instance or instance:FindFirstChild("HumanoidRootPart")
+        if not root then return end
 
-local state = {
-    isAutoActive = false,
-    isHopping = false,
-    isDodging = false,
-    currentTarget = nil,
-    startTime = tick(),
-    targetStartTime = tick(),
-    lastTargetName = "",
-    lastM1 = 0
-}
-
---------------------------------------------------------------------------------
--- 1. SISTEMA DE NOTIFICAÇÕES E INTERFACE
---------------------------------------------------------------------------------
-local function CreateNotify(message)
-    local NotifyGui = LocalPlayer.PlayerGui:FindFirstChild("ZenithNotify") or Instance.new("ScreenGui", LocalPlayer.PlayerGui)
-    NotifyGui.Name = "ZenithNotify"
-
-    local NotifFrame = Instance.new("Frame", NotifyGui)
-    NotifFrame.Size = UDim2.new(0, 280, 0, 60)
-    NotifFrame.Position = UDim2.new(1, 10, 0.85, 0)
-    NotifFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    Instance.new("UICorner", NotifFrame).CornerRadius = UDim.new(0, 10)
-    
-    local Icon = Instance.new("ImageLabel", NotifFrame)
-    Icon.Size = UDim2.new(0, 45, 0, 45)
-    Icon.Position = UDim2.new(0, 8, 0.5, -22)
-    Icon.Image = config.imageID
-    Icon.BackgroundTransparency = 1
-    Instance.new("UICorner", Icon).CornerRadius = UDim.new(1, 0)
-
-    local Text = Instance.new("TextLabel", NotifFrame)
-    Text.Size = UDim2.new(1, -65, 1, 0)
-    Text.Position = UDim2.new(0, 60, 0, 0)
-    Text.BackgroundTransparency = 1
-    Text.Text = message
-    Text.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Text.Font = Enum.Font.GothamMedium
-    Text.TextSize = 12
-    Text.TextWrapped = true
-
-    NotifFrame:TweenPosition(UDim2.new(1, -290, 0.85, 0), "Out", "Quart", 0.5)
-    task.delay(4, function()
-        if NotifFrame then
-            NotifFrame:TweenPosition(UDim2.new(1, 10, 0.85, 0), "In", "Quart", 0.5)
-            task.wait(0.5)
-            NotifFrame:Destroy()
-        end
-    end)
-end
-
-local ScreenGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
-ScreenGui.Name = "ZenithMain"
-
-local MainFrame = Instance.new("ImageLabel", ScreenGui)
-MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-MainFrame.Size = UDim2.new(0, 450, 0, 350)
-MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-MainFrame.Image = config.imageID
-MainFrame.ImageColor3 = Color3.fromRGB(60, 60, 60)
-MainFrame.BackgroundTransparency = 0.1
-MainFrame.Visible = false
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 20)
-Instance.new("UIStroke", MainFrame).Color = Color3.fromRGB(255, 255, 255)
-
-local function CreateLabel(pos, text, size, color, align)
-    local lbl = Instance.new("TextLabel", MainFrame)
-    lbl.Size = UDim2.new(1, -40, 0, 30)
-    lbl.Position = pos
-    lbl.BackgroundTransparency = 1
-    lbl.Text = text
-    lbl.TextColor3 = color or Color3.fromRGB(255, 255, 255)
-    lbl.Font = Enum.Font.GothamBold
-    lbl.TextSize = size
-    lbl.TextXAlignment = align or Enum.TextXAlignment.Center
-    return lbl
-end
-
-local TitleLabel = CreateLabel(UDim2.new(0, 20, 0, 15), config.scriptName, 18, nil, "Left")
-local CreatorLabel = CreateLabel(UDim2.new(0, 20, 0, 15), "by " .. config.creator, 14, Color3.fromRGB(180, 180, 180), "Right")
-local TimerLabel = CreateLabel(UDim2.new(0, 20, 0.3, 0), "SERVER TIME: 00:00", 16)
-local TargetTimerLabel = CreateLabel(UDim2.new(0, 20, 0.4, 0), "TARGET TIME: 0s", 14)
-
-local OpenBtn = Instance.new("ImageButton", ScreenGui)
-OpenBtn.Size = UDim2.new(0, 60, 0, 60)
-OpenBtn.Position = UDim2.new(0, 20, 0, 20)
-OpenBtn.Image = config.imageID
-Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
-
---------------------------------------------------------------------------------
--- 2. SISTEMA DE ESP MELHORADO (NOME + DISTÂNCIA + TIMES)
---------------------------------------------------------------------------------
-local function UpdateESP()
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            local root = p.Character.HumanoidRootPart
-            local espName = "ZenithESP_" .. p.Name
-            
-            -- Highlight (Silhueta)
-            local highlight = p.Character:FindFirstChild(espName) or Instance.new("Highlight", p.Character)
-            highlight.Name = espName
-            
-            -- Definir cor pelo time
-            local team = tostring(p.Team or ""):lower()
-            local teamColor = Color3.fromRGB(255, 0, 0) -- Padrão Pirata
-            
-            if team:find("marine") or team:find("marinheiro") then
-                teamColor = Color3.fromRGB(0, 100, 255)
-            end
-            
-            highlight.FillColor = teamColor
-            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-            highlight.FillTransparency = 0.5
-
-            -- BillboardGui (Interface flutuante)
-            local billboard = root:FindFirstChild("ZenithInfo") or Instance.new("BillboardGui", root)
-            billboard.Name = "ZenithInfo"
-            billboard.Size = UDim2.new(0, 200, 0, 50)
-            billboard.Adornee = root
-            billboard.AlwaysOnTop = true
-            billboard.ExtentsOffset = Vector3.new(0, 3.5, 0) -- Um pouco mais alto para não cobrir a cabeça
-
-            -- Label do Nome
-            local nameLabel = billboard:FindFirstChild("NameLabel") or Instance.new("TextLabel", billboard)
-            nameLabel.Name = "NameLabel"
-            nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
-            nameLabel.Position = UDim2.new(0, 0, 0, 0)
-            nameLabel.BackgroundTransparency = 1
-            nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- Nome em branco para destaque
-            nameLabel.Font = Enum.Font.GothamBold
-            nameLabel.TextSize = 13
-            nameLabel.TextStrokeTransparency = 0.5
-            nameLabel.Text = p.DisplayName -- Usa o nome de exibição do jogador
-
-            -- Label da Distância
-            local distLabel = billboard:FindFirstChild("DistLabel") or Instance.new("TextLabel", billboard)
-            distLabel.Name = "DistLabel"
-            distLabel.Size = UDim2.new(1, 0, 0.5, 0)
-            distLabel.Position = UDim2.new(0, 0, 0.45, 0)
-            distLabel.BackgroundTransparency = 1
-            distLabel.TextColor3 = teamColor -- Distância na cor do time
-            distLabel.Font = Enum.Font.GothamBold
-            distLabel.TextSize = 11
-            distLabel.TextStrokeTransparency = 0.8
-            
-            local mag = (LocalPlayer.Character.HumanoidRootPart.Position - root.Position).Magnitude
-            distLabel.Text = string.format("[%d m]", mag)
-        end
-    end
-end
-
---------------------------------------------------------------------------------
--- 3. LÓGICAS DE AUTOMAÇÃO
---------------------------------------------------------------------------------
-
-local function AutoSelectTeam()
-    -- Tentativa de selecionar time Piratas (comum em Blox Fruits)
-    local remote = ReplicatedStorage:FindFirstChild("CommF_", true)
-    if remote then
-        pcall(function() remote:InvokeServer("SetTeam", "Pirates") end)
-    end
-end
-
-local function serverHop()
-    if state.isHopping then return end
-    state.isHopping = true
-    CreateNotify("🚨 TROCANDO SERVIDOR...")
-    local success, result = pcall(function()
-        return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
-    end)
-    if success then
-        for _, s in pairs(result.data) do
-            if s.playing < s.maxPlayers and s.id ~= game.JobId then
-                TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id)
-                return
-            end
-        end
-    end
-    state.isHopping = false
-end
-
-RunService.Heartbeat:Connect(function()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("Humanoid") or not char:FindFirstChild("HumanoidRootPart") then return end
-    local hum = char.Humanoid
-    local root = char.HumanoidRootPart
-
-    -- 1. Lógica de ESP
-    UpdateESP()
-
-    -- 2. Lógica de Tempo de Servidor
-    local serverElapsed = tick() - state.startTime
-    TimerLabel.Text = string.format("SERVER TIME: %02d:%02d / 01:30", math.floor(serverElapsed/60), serverElapsed%60)
-    if serverElapsed >= config.maxServerTime and not state.isHopping then serverHop() end
-
-    -- 3. AUTO-DODGE (Vida Baixa)
-    if hum.Health < (hum.MaxHealth * config.dodgeHealthPercent) then
-        if not state.isDodging then
-            state.isDodging = true
-            CreateNotify("🚨 VIDA BAIXA! DESVIANDO PARA SEGURANÇA...")
-        end
-        root.CFrame = root.CFrame * CFrame.new(0, 1000, 0) -- Sobe para o céu
-        return 
-    elseif state.isDodging and hum.Health > (hum.MaxHealth * 0.8) then
-        state.isDodging = false
-        CreateNotify("✅ VIDA RECUPERADA! VOLTANDO À CAÇA.")
-    end
-
-    if not state.isAutoActive or state.isDodging then return end
-
-    -- 4. CAÇA AO BOUNTY
-    local nearest = nil
-    local minDist = config.attackDistance
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-            local pRoot = p.Character:FindFirstChild("HumanoidRootPart")
-            if pRoot then
-                local d = (root.Position - pRoot.Position).Magnitude
-                if d < minDist then nearest = p; minDist = d end
-            end
-        end
-    end
-
-    if nearest then
-        if state.lastTargetName ~= nearest.Name then
-            state.lastTargetName = nearest.Name
-            state.targetStartTime = tick()
-            CreateNotify("🎯 ALVO: " .. nearest.DisplayName)
-        end
-        TargetTimerLabel.Text = "TARGET TIME: " .. math.floor(tick() - state.targetStartTime) .. "s"
+        local distance = (root.Position - targetCFrame.Position).Magnitude
+        local duration = distance / speed
         
-        root.CFrame = nearest.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
-        if tick() - state.lastM1 >= config.delays.m1 then
-            state.lastM1 = tick()
-            local tool = char:FindFirstChildOfClass("Tool") or LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
-            if tool then 
-                tool.Parent = char
-                tool:Activate() 
+        local tween = TweenService:Create(root, TweenInfo.new(duration, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
+        tween:Play()
+        return tween
+    end,
+    
+    StopTweens = function(instance)
+        -- Cancela tweens ativos no objeto para evitar conflitos
+        local root = instance:FindFirstChild("HumanoidRootPart") or instance
+        TweenService:Create(root, TweenInfo.new(0), {CFrame = root.CFrame}):Play()
+    end
+}
+
+-- // MÓDULO DE SEGURANÇA (SAFE-CHECK)
+Library.Safety = {
+    IsLowHealth = function(humanoid, percentage)
+        if not humanoid then return false end
+        return humanoid.Health < (humanoid.MaxHealth * percentage)
+    end,
+    
+    GetSafePoint = function(currentPos)
+        -- Retorna uma posição alta no céu baseada na posição atual
+        return CFrame.new(currentPos.X, currentPos.Y + 500, currentPos.Z)
+    end
+}
+
+-- // MÓDULO DE COMBATE
+Library.Combat = {
+    GetNearestTarget = function(maxDistance, priorityType)
+        local target = nil
+        local minVal = math.huge
+        
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Humanoid") then
+                local char = p.Character
+                local dist = (LocalPlayer.Character.HumanoidRootPart.Position - char.HumanoidRootPart.Position).Magnitude
+                
+                if dist <= maxDistance and char.Humanoid.Health > 0 then
+                    if priorityType == "Distance" then
+                        if dist < minVal then minVal = dist; target = p end
+                    else -- Low Health
+                        if char.Humanoid.Health < minVal then minVal = char.Humanoid.Health; target = p end
+                    end
+                end
             end
         end
-    else
-        TargetTimerLabel.Text = "SEARCHING TARGETS..."
+        return target
     end
-end)
+}
 
---------------------------------------------------------------------------------
--- 4. INICIALIZAÇÃO E CONTROLES
---------------------------------------------------------------------------------
-task.spawn(AutoSelectTeam)
-CreateNotify(config.scriptName .. " BY " .. config.creator .. "\nTIME: PIRATAS SELECIONADO.")
-
-OpenBtn.MouseButton1Click:Connect(function() 
-    MainFrame.Visible = not MainFrame.Visible 
-end)
-
-UserInputService.InputBegan:Connect(function(i, p) 
-    if not p and i.KeyCode == Enum.KeyCode.Q then 
-        state.isAutoActive = not state.isAutoActive 
-        CreateNotify(state.isAutoActive and "MODO CAÇA ATIVADO" or "MODO CAÇA DESATIVADO")
-    end 
-end)
+return Library
