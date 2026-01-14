@@ -1,10 +1,11 @@
---// Flow Engine v20.10 - Ultimate Hunter Sync
+--// Flow Engine v20.10 - Ultimate Hunter Sync (RGB Edition)
 --// Criador: Hatsune_inkyt
 --// Comando para destruir: .0 no chat
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local camera = Workspace.CurrentCamera
@@ -18,23 +19,19 @@ local currentAimMode = "Normal"
 local fovShape = "Círculo"
 local fovRadius = 50
 local fovColor = Color3.fromRGB(0, 255, 255)
+local isRGB = true -- MODO RGB PADRÃO ATIVADO
 local targetPart = "Head"
-local lockedPlayer = nil
+local lockedPlayer = "Todos"
 
 local creativeColors = {
     ["Ciano Neon"] = Color3.fromRGB(0, 255, 255), ["Rubi"] = Color3.fromRGB(255, 30, 60),
     ["Roxo Elétrico"] = Color3.fromRGB(190, 0, 255), ["Verde Tóxico"] = Color3.fromRGB(50, 255, 50),
-    ["Laranja Cyber"] = Color3.fromRGB(255, 120, 0), ["Mar Profundo"] = Color3.fromRGB(0, 80, 255),
-    ["Magma"] = Color3.fromRGB(255, 50, 0), ["Vampiro"] = Color3.fromRGB(150, 0, 0),
+    ["Laranja Cyber"] = Color3.fromRGB(255, 120, 0), ["Magma"] = Color3.fromRGB(255, 50, 0),
     ["Ouro"] = Color3.fromRGB(255, 215, 0), ["Pantera Rosa"] = Color3.fromRGB(255, 100, 255),
-    ["Menta"] = Color3.fromRGB(150, 255, 200), ["Céu"] = Color3.fromRGB(135, 206, 235),
-    ["Fantasma"] = Color3.fromRGB(200, 200, 200), ["Meia Noite"] = Color3.fromRGB(20, 20, 50),
-    ["Floresta"] = Color3.fromRGB(34, 139, 34), ["Lavanda"] = Color3.fromRGB(230, 190, 255),
-    ["Amarelo Flash"] = Color3.fromRGB(255, 255, 0), ["Sangue"] = Color3.fromRGB(100, 0, 0),
-    ["Prata"] = Color3.fromRGB(192, 192, 192), ["Branco Neve"] = Color3.fromRGB(255, 255, 255)
+    ["Branco Neve"] = Color3.fromRGB(255, 255, 255)
 }
 
--- Funções de Desenho (Sem preenchimento conforme solicitado)
+-- Funções de Desenho
 local function createDrawing(class, properties)
     local obj = Drawing.new(class)
     for prop, val in pairs(properties) do obj[prop] = val end
@@ -66,7 +63,6 @@ Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 10)
 local uiStroke = Instance.new("UIStroke", mainFrame)
 uiStroke.Thickness = 3; uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
--- PARTE ADICIONADA: Header Preto
 local header = Instance.new("Frame", mainFrame)
 header.Size = UDim2.new(1, 0, 0, 40); header.BackgroundColor3 = Color3.fromRGB(0, 0, 0); header.BorderSizePixel = 0
 local hCorner = Instance.new("UICorner", header); hCorner.CornerRadius = UDim.new(0, 10)
@@ -75,7 +71,6 @@ local title = Instance.new("TextLabel", header)
 title.Size = UDim2.new(1, 0, 1, 0); title.BackgroundTransparency = 1; title.Text = "FLOW-assist | Hatsune_inkyt"
 title.TextColor3 = Color3.new(1, 1, 1); title.Font = "GothamBold"; title.TextSize = 16
 
--- Ajustes de posição para não colidir com o Header
 local sidebar = Instance.new("Frame", mainFrame); sidebar.Size = UDim2.new(0, 100, 1, -40); sidebar.Position = UDim2.new(0, 0, 0, 40); sidebar.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
 Instance.new("UIListLayout", sidebar).HorizontalAlignment = "Center"
 
@@ -92,24 +87,27 @@ local inicioTab = createTab("Início"); local configTab = createTab("Config")
 local uiElements = {}
 
 local function updateAllGlow()
+    local displayColor = isRGB and Color3.fromHSV(tick() % 5 / 5, 1, 1) or fovColor
     for _, item in pairs(uiElements) do
         if item.Type == "Aimbot" then
-            item.Instance.TextColor3 = aimbotEnabled and fovColor or Color3.new(1,1,1)
+            item.Instance.TextColor3 = aimbotEnabled and displayColor or Color3.new(1,1,1)
         elseif item.Type == "Team" then
-            item.Stroke.Color = teamCheck and fovColor or Color3.fromRGB(50,50,50)
+            item.Stroke.Color = teamCheck and displayColor or Color3.fromRGB(50,50,50)
             item.Instance.BackgroundColor3 = teamCheck and Color3.fromRGB(30,30,60) or Color3.fromRGB(20,20,35)
         elseif item.Type == "Player" then
-            item.Instance.TextColor3 = (lockedPlayer == item.Player) and fovColor or Color3.new(0.8,0.8,0.8)
+            item.Instance.TextColor3 = (lockedPlayer == item.Player) and displayColor or Color3.new(0.8,0.8,0.8)
         elseif item.Type == "Part" then
-            item.Instance.TextColor3 = (targetPart == item.Part) and fovColor or Color3.new(0.7,0.7,0.7)
+            item.Instance.TextColor3 = (targetPart == item.Part) and displayColor or Color3.new(0.7,0.7,0.7)
         elseif item.Type == "Shape" then
-            item.Instance.TextColor3 = (fovShape == item.Shape) and fovColor or Color3.new(0.7,0.7,0.7)
+            item.Instance.TextColor3 = (fovShape == item.Shape) and displayColor or Color3.new(0.7,0.7,0.7)
         elseif item.Type == "Mode" then
-            item.Instance.TextColor3 = (currentAimMode == item.Mode) and fovColor or Color3.new(0.7,0.7,0.7)
+            item.Instance.TextColor3 = (currentAimMode == item.Mode) and displayColor or Color3.new(0.7,0.7,0.7)
         elseif item.Type == "SliderDot" then
-            item.Instance.BackgroundColor3 = fovColor
+            item.Instance.BackgroundColor3 = displayColor
         elseif item.Type == "MenuIcon" then
-            item.Stroke.Color = fovColor
+            item.Stroke.Color = displayColor
+        elseif item.Type == "RGBToggle" then
+            item.Instance.TextColor3 = isRGB and displayColor or Color3.new(1,1,1)
         end
     end
 end
@@ -124,7 +122,7 @@ local function addSection(parent, titleText)
     btn.Activated:Connect(function() 
         open = not open
         container.AutomaticSize = open and Enum.AutomaticSize.Y or Enum.AutomaticSize.None
-        btn.TextColor3 = open and fovColor or Color3.new(1,1,1)
+        btn.TextColor3 = open and (isRGB and Color3.fromHSV(tick() % 5 / 5, 1, 1) or fovColor) or Color3.new(1,1,1)
     end)
     return contentFrame
 end
@@ -141,14 +139,20 @@ table.insert(uiElements, {Instance = teamBtn, Stroke = tStr, Type = "Team"})
 teamBtn.Activated:Connect(function() teamCheck = not teamCheck updateAllGlow() end)
 
 local playerListSec = addSection(inicioTab, "JOGADORES")
+
 local function updatePlayerList()
     for i = #uiElements, 1, -1 do if uiElements[i].Type == "Player" then table.remove(uiElements, i) end end
     for _, v in pairs(playerListSec:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
+    
+    local allBtn = Instance.new("TextButton", playerListSec); allBtn.Size = UDim2.new(1,0,0,25); allBtn.Text = "--- TODOS ---"; allBtn.BackgroundTransparency = 1; allBtn.Font = "GothamBold"
+    table.insert(uiElements, {Instance = allBtn, Type = "Player", Player = "Todos"})
+    allBtn.Activated:Connect(function() lockedPlayer = "Todos" updateAllGlow() end)
+
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= player then
             local b = Instance.new("TextButton", playerListSec); b.Size = UDim2.new(1,0,0,25); b.Text = p.DisplayName; b.BackgroundTransparency = 1
             table.insert(uiElements, {Instance = b, Type = "Player", Player = p})
-            b.Activated:Connect(function() lockedPlayer = (lockedPlayer == p and nil or p) updateAllGlow() updatePlayerList() end)
+            b.Activated:Connect(function() lockedPlayer = (lockedPlayer == p and "Todos" or p) updateAllGlow() end)
         end
     end
     updateAllGlow()
@@ -193,28 +197,39 @@ sFrame.InputBegan:Connect(function(input)
 end)
 
 local colorSec = addSection(configTab, "CORES")
+
+-- BOTÃO RGB
+local rgbBtn = Instance.new("TextButton", colorSec); rgbBtn.Size = UDim2.new(1,0,0,30); rgbBtn.Text = "[ MODO RGB ARCO-ÍRIS ]"; rgbBtn.BackgroundTransparency = 0.8; rgbBtn.BackgroundColor3 = Color3.new(0,0,0); rgbBtn.Font = "GothamBold"
+table.insert(uiElements, {Instance = rgbBtn, Type = "RGBToggle"})
+rgbBtn.Activated:Connect(function() isRGB = not isRGB updateAllGlow() end)
+
 for name, color in pairs(creativeColors) do
     local b = Instance.new("TextButton", colorSec); b.Size = UDim2.new(1,0,0,25); b.Text = "• " .. name; b.BackgroundTransparency = 1; b.TextColor3 = Color3.new(0.8,0.8,0.8)
-    b.Activated:Connect(function() fovColor = color updateAllGlow() end)
+    b.Activated:Connect(function() isRGB = false fovColor = color updateAllGlow() end)
 end
 
--- RENDER LOOP
+-- RENDER LOOP (MIRAS E LÓGICA)
 RunService.RenderStepped:Connect(function()
     if not scriptActive then return end
-    uiStroke.Color = Color3.fromHSV(tick() % 5 / 5, 1, 1)
+    
+    -- Atualização dinâmica de cores
+    local dynamicColor = isRGB and Color3.fromHSV(tick() % 5 / 5, 1, 1) or fovColor
+    uiStroke.Color = dynamicColor
+    updateAllGlow()
+
     local center = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
     for _, d in pairs(drawings) do d.Visible = false end
 
     if aimbotEnabled then
-        -- FOV Principal
+        -- FOV E EFEITOS
         if currentAimMode ~= "Invisível" then
             if fovShape == "Círculo" then
-                drawings.circle.Visible = true; drawings.circle.Position = center; drawings.circle.Radius = fovRadius; drawings.circle.Color = fovColor
+                drawings.circle.Visible = true; drawings.circle.Position = center; drawings.circle.Radius = fovRadius; drawings.circle.Color = dynamicColor
             elseif fovShape == "Quadrado" then
-                drawings.square.Visible = true; drawings.square.Size = Vector2.new(fovRadius*2, fovRadius*2); drawings.square.Position = center - Vector2.new(fovRadius, fovRadius); drawings.square.Color = fovColor
+                drawings.square.Visible = true; drawings.square.Size = Vector2.new(fovRadius*2, fovRadius*2); drawings.square.Position = center - Vector2.new(fovRadius, fovRadius); drawings.square.Color = dynamicColor
             elseif fovShape == "Crosshair" then
                 local gap = 5
-                for i=1,4 do drawings["ch"..i].Visible = true; drawings["ch"..i].Color = fovColor end
+                for i=1,4 do drawings["ch"..i].Visible = true; drawings["ch"..i].Color = dynamicColor end
                 drawings.ch1.From = center + Vector2.new(0, gap); drawings.ch1.To = center + Vector2.new(0, gap + fovRadius/2)
                 drawings.ch2.From = center - Vector2.new(0, gap); drawings.ch2.To = center - Vector2.new(0, gap + fovRadius/2)
                 drawings.ch3.From = center + Vector2.new(gap, 0); drawings.ch3.To = center + Vector2.new(gap + fovRadius/2, 0)
@@ -222,43 +237,74 @@ RunService.RenderStepped:Connect(function()
             end
         end
 
-        -- Modo Caçador (Linhas da Borda para Dentro)
+        -- MODO CAÇADOR (ANIMAÇÃO)
         if currentAimMode == "Caçador" then
             local t = tick() * 8
             local anim = math.abs(math.sin(t)) * 15 
             local outer = fovRadius 
-            local inner = fovRadius - anim -- Movimento para dentro
+            local inner = fovRadius - anim 
 
-            for i=1,4 do drawings["c"..i].Visible = true; drawings["c"..i].Color = fovColor end
+            for i=1,4 do drawings["c"..i].Visible = true; drawings["c"..i].Color = dynamicColor end
             drawings.c1.From = center - Vector2.new(outer, outer); drawings.c1.To = center - Vector2.new(inner, inner)
             drawings.c2.From = center + Vector2.new(outer, outer); drawings.c2.To = center + Vector2.new(inner, inner)
             drawings.c3.From = center + Vector2.new(outer, -outer); drawings.c3.To = center + Vector2.new(inner, -inner)
             drawings.c4.From = center - Vector2.new(outer, -outer); drawings.c4.To = center - Vector2.new(inner, -inner)
         end
 
-        -- Lógica de Mira
-        local target = (lockedPlayer and lockedPlayer.Character and lockedPlayer.Character:FindFirstChild(targetPart)) or nil
-        if not target then
-            local dist = fovRadius
+        -- LÓGICA DE MIRA DINÂMICA
+        local target = nil
+        if typeof(lockedPlayer) == "Instance" and lockedPlayer.Character and lockedPlayer.Character:FindFirstChild(targetPart) then
+            target = lockedPlayer.Character[targetPart]
+        else
+            local nearestFOV = fovRadius
+            local nearestGlobal = math.huge
+            local globalTarget = nil
+
             for _, p in pairs(Players:GetPlayers()) do
                 if p ~= player and p.Character and p.Character:FindFirstChild(targetPart) and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
                     if teamCheck and p.Team == player.Team then continue end
-                    local pos, vis = camera:WorldToViewportPoint(p.Character[targetPart].Position)
-                    if vis then
-                        local mag = (Vector2.new(pos.X, pos.Y) - center).Magnitude
-                        if mag < dist then dist = mag; target = p.Character[targetPart] end
+                    
+                    local part = p.Character[targetPart]
+                    local pos, vis = camera:WorldToViewportPoint(part.Position)
+                    local magMouse = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+                    local magChar = (part.Position - player.Character.PrimaryPart.Position).Magnitude
+
+                    if vis and magMouse < nearestFOV then
+                        nearestFOV = magMouse
+                        target = part
+                    end
+                    if magChar < nearestGlobal then
+                        nearestGlobal = magChar
+                        globalTarget = part
                     end
                 end
             end
+            if not target then target = globalTarget end
         end
         if target then camera.CFrame = CFrame.new(camera.CFrame.Position, target.Position) end
     end
 end)
 
--- Botão de Menu e Tabs
+-- BOTÃO DE MENU ARRASTÁVEL
 local menuToggle = Instance.new("TextButton", screenGui); menuToggle.Size = UDim2.new(0, 45, 0, 45); menuToggle.Position = UDim2.new(0, 10, 0, 55); menuToggle.BackgroundColor3 = Color3.fromRGB(0, 0, 0); menuToggle.Text = "flow"; menuToggle.TextColor3 = Color3.new(1,1,1)
 Instance.new("UICorner", menuToggle).CornerRadius = UDim.new(1,0)
 local mStr = Instance.new("UIStroke", menuToggle); mStr.Thickness = 2; table.insert(uiElements, {Instance = menuToggle, Stroke = mStr, Type = "MenuIcon"})
+
+local dragging, dragInput, dragStart, startPos
+menuToggle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true; dragStart = input.Position; startPos = menuToggle.Position
+        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+    end
+end)
+menuToggle.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
+RunService.RenderStepped:Connect(function()
+    if dragging and dragInput then
+        local delta = dragInput.Position - dragStart
+        menuToggle.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
 menuToggle.Activated:Connect(function() mainFrame.Visible = not mainFrame.Visible end)
 
 local function addTabBtn(n) 
