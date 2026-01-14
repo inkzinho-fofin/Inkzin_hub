@@ -65,3 +65,202 @@ Library.Combat = {
 }
 
 return Library
+
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VIM = game:GetService("VirtualInputManager")
+
+local LocalPlayer = Players.LocalPlayer
+
+--------------------------------------------------------------------------------
+-- CONFIGURAÇÕES E ESTADO
+--------------------------------------------------------------------------------
+getgenv().Config = {
+    TweenSpeed = 350,
+    AttackDistance = 1500,
+    SafeHealth = 0.25, -- Fugir com 25% de vida
+    AutoSafeMode = true,
+    TargetPriority = "LowHealth", -- LowHealth ou Distance
+    Team = "Pirates"
+}
+
+getgenv().Setting = {
+    ["Melee"] = {["Enable"] = true, ["Delay"] = 2.5,
+        ["Skills"] = {
+            ["Z"] = {["Enable"] = true, ["HoldTime"] = 0.2},
+            ["X"] = {["Enable"] = true, ["HoldTime"] = 0.1},
+            ["C"] = {["Enable"] = true, ["HoldTime"] = 0.1},
+        },
+    },
+    ["Blox Fruit"] = {["Enable"] = true, ["Delay"] = 1.5,
+        ["Skills"] = {
+            ["Z"] = {["Enable"] = true, ["HoldTime"] = 0},
+            ["X"] = {["Enable"] = true, ["HoldTime"] = 0},
+            ["C"] = {["Enable"] = true, ["HoldTime"] = 0},
+            ["V"] = {["Enable"] = true, ["HoldTime"] = 0},
+        },
+    }
+}
+
+local state = {
+    isAutoActive = false,
+    isDodging = false,
+    currentTarget = nil,
+    lastSkillTick = tick(),
+    startTime = tick(),
+}
+
+--------------------------------------------------------------------------------
+-- FUNÇÕES DE UTILIDADE (UI & NOTIFY)
+--------------------------------------------------------------------------------
+local function CreateNotify(msg)
+    -- Lógica de notificação simplificada para performance
+    print("[FLOW_BOUNTY]: " .. msg)
+    -- (Sua função de UI Notify pode ser chamada aqui)
+end
+
+--------------------------------------------------------------------------------
+-- SISTEMA DE MOVIMENTAÇÃO (ANTI-CHEAT BYPASS)
+--------------------------------------------------------------------------------
+local function FastTween(targetCFrame)
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    
+    local root = char.HumanoidRootPart
+    local dist = (root.Position - targetCFrame.Position).Magnitude
+    local duration = dist / getgenv().Config.TweenSpeed
+
+    -- Se estiver muito longe, usamos um pequeno delay para simular viagem
+    if dist > 50 then
+        TweenService:Create(root, TweenInfo.new(duration, Enum.EasingStyle.Linear), {CFrame = targetCFrame}):Play()
+    else
+        root.CFrame = targetCFrame
+    end
+end
+
+--------------------------------------------------------------------------------
+-- FUNÇÕES DE CAÇA (PLAYER SCANNER)
+--------------------------------------------------------------------------------
+local function GetBestTarget()
+    local bestTarget = nil
+    local minPriority = math.huge
+
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+            -- Verifica se está em área segura (Check de PvP enabled no Blox Fruits)
+            if not p.Character:FindFirstChild("ForceField") then
+                local dist = (LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
+                if dist <= getgenv().Config.AttackDistance then
+                    if getgenv().Config.TargetPriority == "Distance" then
+                        if dist < minPriority then minPriority = dist; bestTarget = p end
+                    else
+                        local hp = p.Character.Humanoid.Health
+                        if hp < minPriority then minPriority = hp; bestTarget = p end
+                    end
+                end
+            end
+        end
+    end
+    return bestTarget
+end
+
+--------------------------------------------------------------------------------
+-- LÓGICA DE COMBATE (SKILL CHAIN)
+--------------------------------------------------------------------------------
+local function UseSkill(key, hold)
+    VIM:SendKeyEvent(true, key, false, game)
+    if hold and hold > 0 then task.wait(hold) end
+    VIM:SendKeyEvent(false, key, false, game)
+end
+
+local function ExecuteCombat(target)
+    local char = LocalPlayer.Character
+    if not char or not target.Character then return end
+    
+    -- 1. Ativar Invisibilidade (Root Priority Bypass)
+    if getgenv().Invisible and char:FindFirstChild("LowerTorso") then
+        char.LowerTorso.RootPriority = 127
+    end
+
+    -- 2. Ativar Race V3/V4 (Check de vida ou burst)
+    if getgenv().AutoUseRaceV3 then UseSkill("T", 0) end
+
+    -- 3. Ciclo de Armas
+    for weaponType, data in pairs(getgenv().Setting) do
+        if data.Enable then
+            local tool = LocalPlayer.Backpack:FindFirstChild(weaponType) or char:FindFirstChild(weaponType)
+            if tool then
+                if tool.Parent ~= char then char.Humanoid:EquipTool(tool) end
+                
+                -- Executar Skills da arma
+                for key, skill in pairs(data.Skills) do
+                    if skill.Enable and (tick() - state.lastSkillTick) > 0.3 then
+                        task.spawn(function() UseSkill(key, skill.HoldTime) end)
+                        state.lastSkillTick = tick()
+                    end
+                end
+                task.wait(0.2) -- Delay entre troca de armas
+            end
+        end
+    end
+end
+
+--------------------------------------------------------------------------------
+-- LOOP DE EXECUÇÃO (O CORAÇÃO DO SCRIPT)
+--------------------------------------------------------------------------------
+RunService.Heartbeat:Connect(function()
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    
+    -- 1. Check de Segurança (Auto Safe)
+    if getgenv().Config.AutoSafeMode and char.Humanoid.Health < (char.Humanoid.MaxHealth * getgenv().Config.SafeHealth) then
+        state.isDodging = true
+        char.HumanoidRootPart.CFrame = CFrame.new(root.Position.X, 1000, root.Position.Z) -- Sobe para o céu
+        return
+    else
+        state.isDodging = false
+    end
+
+    -- 2. Lógica de Caça Ativa
+    if state.isAutoActive and not state.isDodging then
+        state.currentTarget = GetBestTarget()
+        
+        if state.currentTarget and state.currentTarget.Character:FindFirstChild("HumanoidRootPart") then
+            local targetRP = state.currentTarget.Character.HumanoidRootPart
+            
+            -- Posicionamento: Atrás do inimigo
+            local targetPos = targetRP.CFrame * CFrame.new(0, 0, 3) 
+            FastTween(targetPos)
+            
+            -- Olhar para o alvo
+            char.HumanoidRootPart.CFrame = CFrame.lookAt(char.HumanoidRootPart.Position, targetRP.Position)
+            
+            -- Atacar
+            ExecuteCombat(state.currentTarget)
+        end
+    end
+end)
+
+--------------------------------------------------------------------------------
+-- INICIALIZAÇÃO E TECLAS
+--------------------------------------------------------------------------------
+UserInputService.InputBegan:Connect(function(input, processed)
+    if not processed and input.KeyCode == Enum.KeyCode.Q then
+        state.isAutoActive = not state.isAutoActive
+        CreateNotify(state.isAutoActive and "MODO CAÇA ATIVADO" or "MODO CAÇA DESATIVADO")
+    end
+end)
+
+-- Auto Team Join
+task.spawn(function()
+    local remote = ReplicatedStorage:FindFirstChild("CommF_", true)
+    if remote then remote:InvokeServer("SetTeam", getgenv().Config.Team) end
+end)
+
+CreateNotify("FLOW_BOUNTY PRONTO. PRESSIONE 'Q' PARA COMEÇAR.")
