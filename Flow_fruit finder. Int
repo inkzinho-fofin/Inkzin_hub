@@ -1,145 +1,124 @@
--- [[ 1: CONFIGURAÇÕES E GETGENV ]]
--- Você pode mudar esses valores antes de executar ou via console após executado.
-getgenv().FlowInterface = {
-    BackgroundID = "", -- ID da imagem de fundo
-    IconID = "rbxassetid://135908570815238",       -- ID do botão e ícones de log
-    CoreURL = loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"))()
-}
+-- [[ INTERFACE FLOW FRUIT FINDER ]]
 
--- [[ 2: CRIAÇÃO DA INTERFACE VISUAL ]]
+-- 1. Verificação de Configurações (Getgenv)
+local config = getgenv().FlowInterface or {}
+local bgID = config.BackgroundID or "135908570815238"
+local iconID = config.IconID or "rbxassetid://135908570815238"
+local coreURL = config.CoreURL or loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"))()
+
+-- Função para garantir formato de imagem
+local function getImg(id)
+    id = tostring(id)
+    return id:find("rbxassetid://") and id or "rbxassetid://" .. id
+end
+
+-- 2. Criação da UI
 local CoreGui = game:GetService("CoreGui")
-local Players = game:GetService("Players")
-local lp = Players.LocalPlayer
+local lp = game.Players.LocalPlayer
 
--- Limpeza de UI antiga
-if CoreGui:FindFirstChild("FlowSystemUI") then CoreGui.FlowSystemUI:Destroy() end
+if CoreGui:FindFirstChild("FlowUI") then CoreGui.FlowUI:Destroy() end
 
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "FlowSystemUI"
-ScreenGui.Parent = CoreGui
-ScreenGui.ResetOnSpawn = false
+local sg = Instance.new("ScreenGui", CoreGui)
+sg.Name = "FlowUI"
 
--- Botão Redondo (Superior Esquerdo)
-local ToggleBtn = Instance.new("ImageButton")
-ToggleBtn.Name = "ToggleButton"
-ToggleBtn.Parent = ScreenGui
-ToggleBtn.Position = UDim2.new(0, 15, 0, 15)
-ToggleBtn.Size = UDim2.new(0, 55, 0, 55)
-ToggleBtn.Image = getgenv().FlowInterface.IconID
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+-- Botão de Toggle (Redondo)
+local btn = Instance.new("ImageButton", sg)
+btn.Size = UDim2.new(0, 55, 0, 55)
+btn.Position = UDim2.new(0, 15, 0, 15)
+btn.Image = getImg(iconID)
+btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+btn.BorderSizePixel = 0
+Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
 
-local BtnCorner = Instance.new("UICorner")
-BtnCorner.CornerRadius = UDim.new(1, 0)
-BtnCorner.Parent = ToggleBtn
+-- Painel Principal
+local frame = Instance.new("ImageLabel", sg)
+frame.Size = UDim2.new(0, 420, 0, 260)
+frame.Position = UDim2.new(0.5, -210, 0.5, -130)
+frame.Image = getImg(bgID)
+frame.Visible = false
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
+Instance.new("UIStroke", frame).Thickness = 2
 
--- Painel Central
-local MainFrame = Instance.new("ImageLabel")
-MainFrame.Name = "MainFrame"
-MainFrame.Parent = ScreenGui
-MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-MainFrame.Size = UDim2.new(0, 420, 0, 260)
-MainFrame.Image = getgenv().FlowInterface.BackgroundID
-MainFrame.Visible = false
-MainFrame.ClipsDescendants = true
+-- Área de Logs
+local scroll = Instance.new("ScrollingFrame", frame)
+scroll.Size = UDim2.new(0.9, 0, 0.8, 0)
+scroll.Position = UDim2.new(0.05, 0, 0.12, 0)
+scroll.BackgroundTransparency = 1
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.ScrollBarThickness = 2
 
-local FrameCorner = Instance.new("UICorner")
-FrameCorner.CornerRadius = UDim.new(0, 12)
-FrameCorner.Parent = MainFrame
+local layout = Instance.new("UIListLayout", scroll)
+layout.Padding = UDim.new(0, 5)
 
-local Stroke = Instance.new("UIStroke")
-Stroke.Thickness = 2
-Stroke.Color = Color3.new(1, 1, 1)
-Stroke.Parent = MainFrame
+-- 3. Função de Logs com Ícone
+local lastLog = ""
+local function addLog(msg)
+    if msg == lastLog then return end
+    lastLog = msg
+    
+    local entry = Instance.new("Frame", scroll)
+    entry.Size = UDim2.new(1, 0, 0, 25)
+    entry.BackgroundTransparency = 1
 
--- Scrolling Frame para Logs
-local LogScroll = Instance.new("ScrollingFrame")
-LogScroll.Parent = MainFrame
-LogScroll.Size = UDim2.new(0.9, 0, 0.8, 0)
-LogScroll.Position = UDim2.new(0.05, 0, 0.12, 0)
-LogScroll.BackgroundTransparency = 1
-LogScroll.ScrollBarThickness = 2
-LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+    local img = Instance.new("ImageLabel", entry)
+    img.Size = UDim2.new(0, 20, 0, 20)
+    img.Image = getImg(iconID)
+    img.BackgroundTransparency = 1
 
-local LogLayout = Instance.new("UIListLayout")
-LogLayout.Parent = LogScroll
-LogLayout.Padding = UDim.new(0, 5)
+    local txt = Instance.new("TextLabel", entry)
+    txt.Size = UDim2.new(1, -25, 1, 0)
+    txt.Position = UDim2.new(0, 25, 0, 0)
+    txt.Text = msg
+    txt.TextColor3 = Color3.new(1, 1, 1)
+    txt.Font = Enum.Font.GothamSemibold
+    txt.TextSize = 13
+    txt.BackgroundTransparency = 1
+    txt.TextXAlignment = "Left"
 
--- [[ 3: SISTEMA DE LOGS COM ÍCONE ]]
-local function AddLog(msg)
-    local Entry = Instance.new("Frame")
-    Entry.Size = UDim2.new(1, 0, 0, 25)
-    Entry.BackgroundTransparency = 1
-    Entry.Parent = LogScroll
-
-    local Icon = Instance.new("ImageLabel")
-    Icon.Size = UDim2.new(0, 20, 0, 20)
-    Icon.Image = getgenv().FlowInterface.IconID
-    Icon.BackgroundTransparency = 1
-    Icon.Parent = Entry
-
-    local Text = Instance.new("TextLabel")
-    Text.Size = UDim2.new(1, -25, 1, 0)
-    Text.Position = UDim2.new(0, 25, 0, 0)
-    Text.Text = msg
-    Text.TextColor3 = Color3.new(1, 1, 1)
-    Text.Font = Enum.Font.Gotham
-    Text.TextSize = 13
-    Text.TextXAlignment = Enum.TextXAlignment.Left
-    Text.BackgroundTransparency = 1
-    Text.Parent = Entry
-
-    LogScroll.CanvasSize = UDim2.new(0, 0, 0, LogLayout.AbsoluteContentSize.Y)
-    LogScroll.CanvasPosition = Vector2.new(0, LogScroll.CanvasSize.Y.Offset)
+    scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
+    scroll.CanvasPosition = Vector2.new(0, scroll.CanvasSize.Y.Offset)
 end
 
--- [[ 4: LÓGICA DE EXECUÇÃO (LOADSTRING) ]]
-local function ExecuteCore()
-    AddLog("Executando e esperando entrada no servidor...")
-    
-    local success, content = pcall(game.HttpGet, game, getgenv().FlowInterface.CoreURL)
-    
-    if success then
-        local func, err = loadstring(content)
-        if func then
-            task.spawn(func)
-            AddLog("Core Script carregado com sucesso!")
-        else
-            AddLog("Erro no loadstring: " .. tostring(err))
-        end
-    else
-        AddLog("Erro ao baixar o script do GitHub.")
-    end
-end
-
--- [[ 5: MONITORAMENTO E INTERAÇÃO ]]
-ToggleBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
+-- 4. Botão de abrir/fechar
+btn.MouseButton1Click:Connect(function()
+    frame.Visible = not frame.Visible
 end)
 
--- Loop para observar o status e atualizar imagem via getgenv
+-- 5. Chamada do Script Core (O Script da Interface chama o Core)
+task.spawn(function()
+    addLog("Buscando script core...")
+    local success, content = pcall(game.HttpGet, game, coreURL)
+    if success then
+        addLog("Core carregado! Executando...")
+        local func = loadstring(content)
+        if func then task.spawn(func) end
+    else
+        addLog("Erro ao carregar o Core.")
+    end
+end)
+
+-- 6. Monitoramento em tempo real
 task.spawn(function()
     local lastTeam = ""
-    ExecuteCore()
-
-    while task.wait(1) do
-        -- Atualiza imagem de fundo dinamicamente se mudar o getgenv
-        if MainFrame.Image ~= getgenv().FlowInterface.BackgroundID then
-            MainFrame.Image = getgenv().FlowInterface.BackgroundID
+    while task.wait(0.5) do
+        -- Sincronizar Fundo (Getgenv dinâmico)
+        local currentBG = getgenv().FlowInterface and getgenv().FlowInterface.BackgroundID or bgID
+        if frame.Image ~= getImg(currentBG) then
+            frame.Image = getImg(currentBG)
         end
 
-        -- Monitorar Entrada no Time Marine
+        -- Monitorar Marinheiros
         if lp.Team and lp.Team.Name == "Marines" and lastTeam ~= "Marines" then
-            AddLog("Time selecionado: Marine (Marinheiro)")
+            addLog("Time Marine selecionado.")
             lastTeam = "Marines"
         end
 
-        -- Monitorar Frutas (Exemplo de leitura constante)
+        -- Monitorar Frutas
         for _, v in pairs(workspace:GetChildren()) do
             if v:IsA("Tool") and (v.Name:find("Fruit") or v.Name:find("Fruta")) then
-                AddLog("Fruta detectada: " .. v.Name)
-                AddLog("Armazenando fruta encontrada...")
-                task.wait(2) -- Delay para evitar spam no log
+                addLog("Fruta detectada: " .. v.Name)
+                addLog("Aguardando armazenamento...")
+                task.wait(2)
             end
         end
     end
