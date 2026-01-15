@@ -1,15 +1,15 @@
 --[[
-    FLOW FRUIT FINDER - V21.1 HYBRID UNIFIED
-    - Sistema de Imagem Dinâmico via getgenv().CustomFruitImg
-    - UI Estilizada com Nome do Criador
-    - Scanner Anti-Falha e Log de Status otimizado
+    FLOW FRUIT FINDER
+    - Criador: Hatsune_inkyt
+    - Sistema Híbrido: Imagem via getgenv + Scanner Avançado
+    - Auto Team: Marines
 ]]
 
--- Configuração de Imagem via Global Environment
+-- Configuração de Imagem via Global Environment (Repositorável)
 local DEFAULT_IMG = "rbxassetid://135908570815238"
 local UI_IMAGE = getgenv().CustomFruitImg or DEFAULT_IMG
 
-local UI_TITLE = "FLOW FRUIT FINDER V21"
+local UI_TITLE = "FLOW FRUIT FINDER"
 local CREATOR_NAME = "by Hatsune_inkyt"
 local THEME_COLOR = Color3.fromRGB(0, 210, 255)
 
@@ -33,42 +33,45 @@ player.Idled:Connect(function()
 end)
 
 -----------------------------------------------------------
--- AUTO JOIN MARINES
+-- AUTO JOIN MARINES (REVISADO)
 -----------------------------------------------------------
-task.spawn(function()
+local function JoinTeam()
     local remote = ReplicatedStorage:WaitForChild("CommF_", 15)
     if remote then
         remote:InvokeServer("SetTeam", "Marines")
     end
-end)
+end
+task.spawn(JoinTeam)
 
 -----------------------------------------------------------
--- INTERFACE VISUAL
+-- INTERFACE VISUAL (UNIFICADA & LIMPA)
 -----------------------------------------------------------
 local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
-sg.Name = "FlowFinderV21_Unified"
+sg.Name = "FlowFinder_UnifiedUI"
 
+-- Botão Abrir/Fechar
 local OpenBtn = Instance.new("ImageButton", sg)
 OpenBtn.Size = UDim2.new(0, 50, 0, 50)
 OpenBtn.Position = UDim2.new(0, 15, 0, 15)
-OpenBtn.Image = UI_IMAGE -- Usa a imagem dinâmica
+OpenBtn.Image = UI_IMAGE
 OpenBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
 local btnStroke = Instance.new("UIStroke", OpenBtn)
 btnStroke.Color = THEME_COLOR
 btnStroke.Thickness = 2
 
+-- Frame Principal
 local MainFrame = Instance.new("Frame", sg)
 MainFrame.Size = UDim2.new(0, 320, 0, 190)
 MainFrame.Position = UDim2.new(0.5, -160, 0.4, -95)
 MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
-MainFrame.Visible = true
 Instance.new("UICorner", MainFrame)
 
 local BgImg = Instance.new("ImageLabel", MainFrame)
 BgImg.Size = UDim2.new(1, 0, 1, 0)
-BgImg.Image = UI_IMAGE -- Usa a imagem dinâmica
+BgImg.Image = UI_IMAGE
 BgImg.ScaleType = Enum.ScaleType.Stretch
 BgImg.ZIndex = 1
 
@@ -83,6 +86,7 @@ MainStroke.Color = THEME_COLOR
 MainStroke.Thickness = 2
 MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
+-- Título e Créditos
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 35)
 Title.Text = UI_TITLE
@@ -117,6 +121,7 @@ OpenBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
+-- Notificações de Topo
 local function Notify(msg)
     task.spawn(function()
         local n = Instance.new("TextLabel", sg)
@@ -136,7 +141,7 @@ local function Notify(msg)
 end
 
 -----------------------------------------------------------
--- LÓGICA DE BUSCA E SCANNER
+-- LOGICA DE SCANNER E ESP
 -----------------------------------------------------------
 local function CreateESP(object, name)
     if object:FindFirstChild("FruitESP") then return end
@@ -144,6 +149,7 @@ local function CreateESP(object, name)
     billboard.Name = "FruitESP"
     billboard.AlwaysOnTop = true
     billboard.Size = UDim2.new(0, 100, 0, 50)
+    
     local text = Instance.new("TextLabel", billboard)
     text.Size = UDim2.new(1, 0, 1, 0)
     text.BackgroundTransparency = 1
@@ -154,9 +160,11 @@ local function CreateESP(object, name)
 end
 
 local function IsAFruit(obj)
+    -- Verifica por nome e por estrutura (Handle) para garantir listagem funcional
     if (obj:IsA("Tool") or obj:IsA("Model")) then
-        if obj.Name:find("Fruit") or obj:FindFirstChild("Handle") then
-            if not obj:FindFirstAncestorOfClass("Model"):FindFirstChild("Humanoid") then
+        if obj.Name:lower():find("fruit") or obj:FindFirstChild("Handle") then
+            -- Ignora se estiver com um jogador (Humanoid check)
+            if not obj:FindFirstAncestorOfClass("Model") or not obj:FindFirstAncestorOfClass("Model"):FindFirstChild("Humanoid") then
                 return true
             end
         end
@@ -175,7 +183,7 @@ local function ScanForFruits()
 end
 
 local function ServerHop()
-    StatusLabel.Text = "BUSCANDO SERVIDOR..."
+    StatusLabel.Text = "PROCURANDO NOVO SERVIDOR..."
     Notify("TROCANDO DE SERVIDOR...")
     task.wait(1)
     local success, content = pcall(function() 
@@ -209,13 +217,13 @@ task.spawn(function()
                 CreateESP(f, fruitName)
                 
                 StatusLabel.Text = "COLETANDO: " .. fruitName:upper()
-                Notify("FRUTA ENCONTRADA!")
+                Notify("FRUTA LOCALIZADA!")
                 
                 if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                     player.Character.HumanoidRootPart.CFrame = f:GetPivot()
                 end
                 
-                task.wait(2) -- Tempo para o jogo registrar a coleta
+                task.wait(2) -- Tempo para coleta física
                 
                 StatusLabel.Text = "ARMAZENANDO: " .. fruitName:upper()
                 pcall(function()
