@@ -1,24 +1,7 @@
--- FLOW_IMAGE_HANDLER.lua
--- Repositório dedicado à validação de imagens via getgenv
-
-local function ValidateImage()
-    local input = getgenv().CustomFruitImg
-    local defaultID = "rbxassetid://135908570815238"
-    
-    -- Se estiver vazio, nil ou não for número/string válida
-    if input == nil or input == "" then
-        return defaultID
-    end
-    
-    -- Extrai apenas os números da entrada
-    local numericId = tostring(input):match("%d+")
-    
-    if numericId then
-        return "rbxassetid://" .. numericId
-    else
-        return defaultID
-    end
+local input = getgenv().CustomFruitImg
+if input == nil or input == "" then
+    getgenv().FlowImageData = "rbxassetid://135908570815238"
+else
+    local id = tostring(input):match("%d+")
+    getgenv().FlowImageData = "rbxassetid://" .. (id or "135908570815238")
 end
-
-getgenv().FlowImageData = ValidateImage()
-return getgenv().FlowImageData
