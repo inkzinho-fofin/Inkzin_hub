@@ -1,40 +1,116 @@
--- flow_fruit_finder.core
-local core = {}
+local BloxCore = {
+    Services = {
+        Players = game:GetService("Players"),
+        Workspace = game:GetService("Workspace"),
+        ReplicatedStorage = game:GetService("ReplicatedStorage"),
+        TeleportService = game:GetService("TeleportService"),
+        HttpService = game:GetService("HttpService"),
+        TweenService = game:GetService("TweenService"),
+        RunService = game:GetService("RunService")
+    },
+    
+    Data = {
+        FruitList = {
+            "Rocket", "Spin", "Chop", "Spring", "Bomb", "Smoke", "Spike", "Flame", "Falcon", 
+            "Ice", "Sand", "Dark", "Diamond", "Light", "Rubber", "Barrier", "Ghost", "Magma", 
+            "Quake", "Buddha", "Love", "Spider", "Sound", "Phoenix", "Portal", "Rumble", 
+            "Pain", "Blizzard", "Gravity", "Mammoth", "T-Rex", "Dough", "Shadow", "Venom", 
+            "Control", "Spirit", "Dragon", "Leopard", "Kitsune"
+        },
+        Config = {
+            TweenSpeed = 60, -- Velocidade do movimento suave
+            ScanInterval = 5 -- Segundos entre cada varredura
+        }
+    }
+}
 
-local TweenService = game:GetService("TweenService")
-local TeleportService = game:GetService("TeleportService")
-local Players = game:GetService("Players")
-local LP = Players.LocalPlayer
+-- [Módulo ESP] Exibe o nome da fruta no mundo
+function BloxCore:ApplyESP(obj, name)
+    if obj:FindFirstChild("FruitTag") then return end
+    
+    local bgui = Instance.new("BillboardGui")
+    bgui.Name = "FruitTag"
+    bgui.Adornee = obj
+    bgui.AlwaysOnTop = true
+    bgui.Size = UDim2.new(0, 200, 0, 50)
+    bgui.ExtentsOffset = Vector3.new(0, 3, 0)
+    
+    local txt = Instance.new("TextLabel", bgui)
+    txt.BackgroundTransparency = 1
+    txt.Size = UDim2.new(1, 0, 1, 0)
+    txt.Text = "🍎 {" .. name .. "}"
+    txt.TextColor3 = Color3.fromRGB(255, 50, 50)
+    txt.Font = Enum.Font.RobotoMono
+    txt.TextSize = 18
+    txt.TextStrokeTransparency = 0
+    
+    bgui.Parent = obj
+end
 
-core.FruitList = {"Rocket", "Spin", "Blade", "Spring", "Bomb", "Smoke", "Spike", "Flame", "Falcon", "Ice", "Sand", "Dark", "Diamond", "Light", "Rubber", "Barrier", "Ghost", "Magma", "Quake", "Buddha", "Love", "Spider", "Sound", "Phoenix", "Portal", "Rumble", "Pain", "Blizzard", "Gravity", "Mammoth", "T-Rex", "Dough", "Shadow", "Venom", "Control", "Spirit", "Leopard", "Kitsune", "Dragon", "Dragon (East)"}
+-- [Módulo Movimentação] Teleporte com fallback para Tween
+function BloxCore:Collect(target)
+    local lp = self.Services.Players.LocalPlayer
+    local char = lp.Character or lp.CharacterAdded:Wait()
+    local hrp = char:WaitForChild("HumanoidRootPart")
+    
+    -- Tentativa de Teleporte Instantâneo
+    hrp.CFrame = target.CFrame
+    task.wait(0.2)
+    
+    -- Fallback: Se ainda estiver longe, usa TweenService
+    local distance = (hrp.Position - target.Position).Magnitude
+    if distance > 15 then
+        local duration = distance / self.Data.Config.TweenSpeed
+        local info = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+        local tween = self.Services.TweenService:Create(hrp, info, {CFrame = target.CFrame})
+        
+        tween:Play()
+        tween.Completed:Wait()
+    end
+    
+    print("Sucesso: Item alcançado.")
+end
 
-function core.Hop()
-    local servers = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")).data
-    for _, v in pairs(servers) do
-        if v.playing < v.maxPlayers and v.id ~= game.JobId then
-            TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id)
-            break
+-- [Módulo Server Hop] Busca servidores públicos aleatórios
+function BloxCore:HopServer()
+    print("Nenhuma fruta encontrada. Iniciando Server Hop...")
+    local api = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+    local success, result = pcall(function()
+        return self.Services.HttpService:JSONDecode(game:HttpGet(api))
+    end)
+    
+    if success and result.data then
+        for _, server in pairs(result.data) do
+            if server.playing < server.maxPlayers and server.id ~= game.JobId then
+                self.Services.TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id)
+                return
+            end
         end
     end
 end
 
-function core.Collect(target)
-    if not LP.Character or not LP.Character:FindFirstChild("HumanoidRootPart") then return end
-    local hrp = LP.Character.HumanoidRootPart
-    local pos = target:IsA("Model") and target:GetModelCFrame() or target.CFrame
+-- [Módulo Principal] Scanner de Servidor
+function BloxCore:Scan()
+    local fruitsFound = {}
     
-    -- Tentativa de teleporte direto (3x)
-    for i=1, 3 do
-        hrp.CFrame = pos
-        task.wait(0.3)
-        if (hrp.Position - pos.Position).Magnitude < 15 then return end
+    for _, item in pairs(self.Services.Workspace:GetChildren()) do
+        -- Verifica se o objeto é uma Tool e se o nome está na lista
+        if item:IsA("Tool") and table.find(self.Data.FruitList, item.Name) then
+            local handle = item:FindFirstChild("Handle")
+            if handle then
+                table.insert(fruitsFound, item)
+                self:ApplyESP(handle, item.Name)
+            end
+        end
     end
     
-    -- Fallback: Tween
-    local dist = (hrp.Position - pos.Position).Magnitude
-    local tween = TweenService:Create(hrp, TweenInfo.new(dist/350, Enum.EasingStyle.Linear), {CFrame = pos})
-    tween:Play()
-    tween.Completed:Wait()
+    if #fruitsFound > 0 then
+        for _, fruit in pairs(fruitsFound) do
+            self:Collect(fruit.Handle)
+        end
+    else
+        self:HopServer()
+    end
 end
 
-return core
+return BloxCore
