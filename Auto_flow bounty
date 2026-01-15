@@ -1,72 +1,9 @@
-local Library = {}
+--// FLOW_FARM_BOUNTY UI + LÓGICA
+-- 100% original, sem key system
 
--- Serviços
-local TweenService = game:GetService("TweenService")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
--- // MÓDULO DE MOVIMENTAÇÃO (TWEENS)
-Library.Movement = {
-    Tween = function(instance, targetCFrame, speed)
-        if not instance or not targetCFrame then return end
-        local root = instance:IsA("BasePart") and instance or instance:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-
-        local distance = (root.Position - targetCFrame.Position).Magnitude
-        local duration = distance / speed
-        
-        local tween = TweenService:Create(root, TweenInfo.new(duration, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
-        tween:Play()
-        return tween
-    end,
-    
-    StopTweens = function(instance)
-        -- Cancela tweens ativos no objeto para evitar conflitos
-        local root = instance:FindFirstChild("HumanoidRootPart") or instance
-        TweenService:Create(root, TweenInfo.new(0), {CFrame = root.CFrame}):Play()
-    end
-}
-
--- // MÓDULO DE SEGURANÇA (SAFE-CHECK)
-Library.Safety = {
-    IsLowHealth = function(humanoid, percentage)
-        if not humanoid then return false end
-        return humanoid.Health < (humanoid.MaxHealth * percentage)
-    end,
-    
-    GetSafePoint = function(currentPos)
-        -- Retorna uma posição alta no céu baseada na posição atual
-        return CFrame.new(currentPos.X, currentPos.Y + 500, currentPos.Z)
-    end
-}
-
--- // MÓDULO DE COMBATE
-Library.Combat = {
-    GetNearestTarget = function(maxDistance, priorityType)
-        local target = nil
-        local minVal = math.huge
-        
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Humanoid") then
-                local char = p.Character
-                local dist = (LocalPlayer.Character.HumanoidRootPart.Position - char.HumanoidRootPart.Position).Magnitude
-                
-                if dist <= maxDistance and char.Humanoid.Health > 0 then
-                    if priorityType == "Distance" then
-                        if dist < minVal then minVal = dist; target = p end
-                    else -- Low Health
-                        if char.Humanoid.Health < minVal then minVal = char.Humanoid.Health; target = p end
-                    end
-                end
-            end
-        end
-        return target
-    end
-}
-
-return Library
-
-
+------------------------------------------
+-- SERVIÇOS
+------------------------------------------
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -75,16 +12,17 @@ local TeleportService = game:GetService("TeleportService")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VIM = game:GetService("VirtualInputManager")
+local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 
---------------------------------------------------------------------------------
+------------------------------------------
 -- CONFIGURAÇÕES E ESTADO
---------------------------------------------------------------------------------
+------------------------------------------
 getgenv().Config = {
     TweenSpeed = 350,
-    AttackDistance = 1500,
-    SafeHealth = 0.25, -- Fugir com 25% de vida
+    AttackDistance = 150,
+    SafeHealth = .25, -- Fugir com 25% de vida
     AutoSafeMode = true,
     TargetPriority = "LowHealth", -- LowHealth ou Distance
     Team = "Pirates"
@@ -93,17 +31,17 @@ getgenv().Config = {
 getgenv().Setting = {
     ["Melee"] = {["Enable"] = true, ["Delay"] = 2.5,
         ["Skills"] = {
-            ["Z"] = {["Enable"] = true, ["HoldTime"] = 0.2},
-            ["X"] = {["Enable"] = true, ["HoldTime"] = 0.1},
-            ["C"] = {["Enable"] = true, ["HoldTime"] = 0.1},
+            ["Z"] = {["Enable"] = true, ["HoldTime"] = .2},
+            ["X"] = {["Enable"] = true, ["HoldTime"] = .1},
+            ["C"] = {["Enable"] = true, ["HoldTime"] = .1},
         },
     },
     ["Blox Fruit"] = {["Enable"] = true, ["Delay"] = 1.5,
         ["Skills"] = {
-            ["Z"] = {["Enable"] = true, ["HoldTime"] = 0},
-            ["X"] = {["Enable"] = true, ["HoldTime"] = 0},
-            ["C"] = {["Enable"] = true, ["HoldTime"] = 0},
-            ["V"] = {["Enable"] = true, ["HoldTime"] = 0},
+            ["Z"] = {["Enable"] = true, ["HoldTime"] = },
+            ["X"] = {["Enable"] = true, ["HoldTime"] = },
+            ["C"] = {["Enable"] = true, ["HoldTime"] = },
+            ["V"] = {["Enable"] = true, ["HoldTime"] = },
         },
     }
 }
@@ -116,27 +54,32 @@ local state = {
     startTime = tick(),
 }
 
---------------------------------------------------------------------------------
--- FUNÇÕES DE UTILIDADE (UI & NOTIFY)
---------------------------------------------------------------------------------
+------------------------------------------
+-- FUNÇÃO DE NOTIFICAÇÃO (SIMPLES + UI)
+------------------------------------------
 local function CreateNotify(msg)
-    -- Lógica de notificação simplificada para performance
-    print("[FLOW_BOUNTY]: " .. msg)
-    -- (Sua função de UI Notify pode ser chamada aqui)
+    print("[FLOW_FARM_BOUNTY]: " .. msg)
+    -- Se quiser, pode usar SetCore para notificação nativa
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "FLOW_FARM_BOUNTY";
+            Text = msg;
+            Duration = 3;
+        })
+    end)
 end
 
---------------------------------------------------------------------------------
+------------------------------------------
 -- SISTEMA DE MOVIMENTAÇÃO (ANTI-CHEAT BYPASS)
---------------------------------------------------------------------------------
+------------------------------------------
 local function FastTween(targetCFrame)
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    
+
     local root = char.HumanoidRootPart
     local dist = (root.Position - targetCFrame.Position).Magnitude
     local duration = dist / getgenv().Config.TweenSpeed
 
-    -- Se estiver muito longe, usamos um pequeno delay para simular viagem
     if dist > 50 then
         TweenService:Create(root, TweenInfo.new(duration, Enum.EasingStyle.Linear), {CFrame = targetCFrame}):Play()
     else
@@ -144,24 +87,26 @@ local function FastTween(targetCFrame)
     end
 end
 
---------------------------------------------------------------------------------
+------------------------------------------
 -- FUNÇÕES DE CAÇA (PLAYER SCANNER)
---------------------------------------------------------------------------------
+------------------------------------------
 local function GetBestTarget()
     local bestTarget = nil
     local minPriority = math.huge
 
     for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-            -- Verifica se está em área segura (Check de PvP enabled no Blox Fruits)
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health >  then
             if not p.Character:FindFirstChild("ForceField") then
-                local dist = (LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                if dist <= getgenv().Config.AttackDistance then
-                    if getgenv().Config.TargetPriority == "Distance" then
-                        if dist < minPriority then minPriority = dist; bestTarget = p end
-                    else
-                        local hp = p.Character.Humanoid.Health
-                        if hp < minPriority then minPriority = hp; bestTarget = p end
+                local myChar = LocalPlayer.Character
+                if myChar and myChar:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("HumanoidRootPart") then
+                    local dist = (myChar.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
+                    if dist <= getgenv().Config.AttackDistance then
+                        if getgenv().Config.TargetPriority == "Distance" then
+                            if dist < minPriority then minPriority = dist; bestTarget = p end
+                        else
+                            local hp = p.Character.Humanoid.Health
+                            if hp < minPriority then minPriority = hp; bestTarget = p end
+                        end
                     end
                 end
             end
@@ -170,97 +115,310 @@ local function GetBestTarget()
     return bestTarget
 end
 
---------------------------------------------------------------------------------
+------------------------------------------
 -- LÓGICA DE COMBATE (SKILL CHAIN)
---------------------------------------------------------------------------------
+------------------------------------------
 local function UseSkill(key, hold)
     VIM:SendKeyEvent(true, key, false, game)
-    if hold and hold > 0 then task.wait(hold) end
+    if hold and hold >  then task.wait(hold) end
     VIM:SendKeyEvent(false, key, false, game)
 end
 
 local function ExecuteCombat(target)
     local char = LocalPlayer.Character
     if not char or not target.Character then return end
-    
-    -- 1. Ativar Invisibilidade (Root Priority Bypass)
+
+    -- Invisibilidade opcional
     if getgenv().Invisible and char:FindFirstChild("LowerTorso") then
         char.LowerTorso.RootPriority = 127
     end
 
-    -- 2. Ativar Race V3/V4 (Check de vida ou burst)
-    if getgenv().AutoUseRaceV3 then UseSkill("T", 0) end
+    -- Race V3/V4 opcional
+    if getgenv().AutoUseRaceV3 then UseSkill(Enum.KeyCode.T, ) end
 
-    -- 3. Ciclo de Armas
     for weaponType, data in pairs(getgenv().Setting) do
         if data.Enable then
             local tool = LocalPlayer.Backpack:FindFirstChild(weaponType) or char:FindFirstChild(weaponType)
-            if tool then
-                if tool.Parent ~= char then char.Humanoid:EquipTool(tool) end
-                
-                -- Executar Skills da arma
+            if tool and char:FindFirstChild("Humanoid") then
+                if tool.Parent ~= char then
+                    char.Humanoid:EquipTool(tool)
+                end
+
                 for key, skill in pairs(data.Skills) do
-                    if skill.Enable and (tick() - state.lastSkillTick) > 0.3 then
-                        task.spawn(function() UseSkill(key, skill.HoldTime) end)
+                    if skill.Enable and (tick() - state.lastSkillTick) > .3 then
+                        task.spawn(function()
+                            UseSkill(Enum.KeyCode[key], skill.HoldTime)
+                        end)
                         state.lastSkillTick = tick()
                     end
                 end
-                task.wait(0.2) -- Delay entre troca de armas
+                task.wait(.2)
             end
         end
     end
 end
 
---------------------------------------------------------------------------------
--- LOOP DE EXECUÇÃO (O CORAÇÃO DO SCRIPT)
---------------------------------------------------------------------------------
+------------------------------------------
+-- LOOP PRINCIPAL
+------------------------------------------
 RunService.Heartbeat:Connect(function()
     local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    
-    -- 1. Check de Segurança (Auto Safe)
+    if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") then return end
+    local root = char.HumanoidRootPart
+
+    -- 1. Segurança (Auto Safe)
     if getgenv().Config.AutoSafeMode and char.Humanoid.Health < (char.Humanoid.MaxHealth * getgenv().Config.SafeHealth) then
         state.isDodging = true
-        char.HumanoidRootPart.CFrame = CFrame.new(root.Position.X, 1000, root.Position.Z) -- Sobe para o céu
+        root.CFrame = CFrame.new(root.Position.X, 100, root.Position.Z)
         return
     else
         state.isDodging = false
     end
 
-    -- 2. Lógica de Caça Ativa
+    -- 2. Modo Caça
     if state.isAutoActive and not state.isDodging then
         state.currentTarget = GetBestTarget()
-        
-        if state.currentTarget and state.currentTarget.Character:FindFirstChild("HumanoidRootPart") then
+
+        if state.currentTarget and state.currentTarget.Character and state.currentTarget.Character:FindFirstChild("HumanoidRootPart") then
             local targetRP = state.currentTarget.Character.HumanoidRootPart
-            
-            -- Posicionamento: Atrás do inimigo
-            local targetPos = targetRP.CFrame * CFrame.new(0, 0, 3) 
+
+            local targetPos = targetRP.CFrame * CFrame.new(, , 3)
             FastTween(targetPos)
-            
-            -- Olhar para o alvo
+
             char.HumanoidRootPart.CFrame = CFrame.lookAt(char.HumanoidRootPart.Position, targetRP.Position)
-            
-            -- Atacar
+
             ExecuteCombat(state.currentTarget)
         end
     end
 end)
 
---------------------------------------------------------------------------------
--- INICIALIZAÇÃO E TECLAS
---------------------------------------------------------------------------------
-UserInputService.InputBegan:Connect(function(input, processed)
-    if not processed and input.KeyCode == Enum.KeyCode.Q then
-        state.isAutoActive = not state.isAutoActive
-        CreateNotify(state.isAutoActive and "MODO CAÇA ATIVADO" or "MODO CAÇA DESATIVADO")
+------------------------------------------
+-- AUTO TEAM JOIN
+------------------------------------------
+task.spawn(function()
+    local remote = ReplicatedStorage:FindFirstChild("CommF_", true)
+    if remote then
+        pcall(function()
+            remote:InvokeServer("SetTeam", getgenv().Config.Team)
+        end)
     end
 end)
 
--- Auto Team Join
+------------------------------------------
+-- UI: FLOW_FARM_BOUNTY
+------------------------------------------
+
+-- ScreenGui
+local FlowGui = Instance.new("ScreenGui")
+FlowGui.Name = "FLOW_FARM_BOUNTY"
+FlowGui.IgnoreGuiInset = true
+FlowGui.ResetOnSpawn = false
+FlowGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+FlowGui.Parent = CoreGui
+
+-- INTRO
+local INTRO = Instance.new("CanvasGroup")
+INTRO.Name = "INTRO"
+INTRO.Size = UDim2.new(1, , 1, )
+INTRO.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
+INTRO.GroupTransparency = 
+INTRO.Parent = FlowGui
+
+local Wallpaper = Instance.new("ImageLabel")
+Wallpaper.Name = "Wallpaper"
+Wallpaper.BackgroundTransparency = 1
+Wallpaper.Size = UDim2.new(1, , 1, )
+Wallpaper.Image = "rbxassetid://"135908570815238"
+Wallpaper.ScaleType = Enum.ScaleType.Crop
+Wallpaper.ImageColor3 = Color3.fromRGB(180, 180, 255)
+Wallpaper.ImageTransparency = .3
+Wallpaper.Parent = INTRO
+
+local Gradient = Instance.new("Frame")
+Gradient.Name = "Gradient"
+Gradient.BackgroundTransparency = 1
+Gradient.Size = UDim2.new(1, , 1, )
+Gradient.Parent = INTRO
+
+local UIGradient = Instance.new("UIGradient")
+UIGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(, Color3.fromRGB(5,5,15)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(10,10,25))
+}
+UIGradient.Rotation = 90
+UIGradient.Parent = Gradient
+
+local Pattern = Instance.new("ImageLabel")
+Pattern.Name = "Pattern"
+Pattern.BackgroundTransparency = 1
+Pattern.Size = UDim2.new(1, , 1, )
+Pattern.Image = "rbxassetid://"
+Pattern.ImageTransparency = .85
+Pattern.ScaleType = Enum.ScaleType.Tile
+Pattern.TileSize = UDim2.new(, 256, , 256)
+Pattern.Parent = INTRO
+
+local TextHolder = Instance.new("Frame")
+TextHolder.Name = "TextHolder"
+TextHolder.BackgroundTransparency = 1
+TextHolder.AnchorPoint = Vector2.new(.5, 1)
+TextHolder.Position = UDim2.new(.5, , .9, )
+TextHolder.Size = UDim2.new(.5, , .12, )
+TextHolder.Parent = INTRO
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Name = "Status"
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Size = UDim2.new(1, , 1, )
+StatusLabel.Font = Enum.Font.GothamSemibold
+StatusLabel.Text = "Inicializando FLOW_FARM_BOUNTY..."
+StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+StatusLabel.TextScaled = true
+StatusLabel.TextWrapped = true
+StatusLabel.Parent = TextHolder
+
+local UITextSizeConstraint = Instance.new("UITextSizeConstraint")
+UITextSizeConstraint.MaxTextSize = 32
+UITextSizeConstraint.Parent = StatusLabel
+
+local Logo = Instance.new("ImageLabel")
+Logo.Name = "Logo"
+Logo.BackgroundTransparency = 1
+Logo.AnchorPoint = Vector2.new(.5, .5)
+Logo.Position = UDim2.new(.5, , .35, )
+Logo.Size = UDim2.new(, 200, , 200)
+Logo.Image = "rbxassetid://"135908570815238" -- logo do script
+Logo.Parent = INTRO
+
+local Main = Instance.new("ImageLabel")
+Main.Name = "Main"
+Main.BackgroundTransparency = 1
+Main.AnchorPoint = Vector2.new(.5, .5)
+Main.Position = UDim2.new(.5, , .65, )
+Main.Size = UDim2.new(.3, , .25, )
+Main.Image = "rbxassetid://"
+Main.ImageTransparency = .7
+Main.ScaleType = Enum.ScaleType.Stretch
+Main.Parent = INTRO
+
+local UIAspectRatioConstraint = Instance.new("UIAspectRatioConstraint")
+UIAspectRatioConstraint.AspectRatio = 2
+UIAspectRatioConstraint.Parent = Main
+
+local Loader = Instance.new("Frame")
+Loader.Name = "Loader"
+Loader.AnchorPoint = Vector2.new(.5, .5)
+Loader.Position = UDim2.new(.5, , .8, )
+Loader.Size = UDim2.new(.25, , .015, )
+Loader.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+Loader.BackgroundTransparency = .2
+Loader.Parent = INTRO
+
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(255, 255, 255)
+UIStroke.Thickness = 1.5
+UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+UIStroke.Parent = Loader
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(, 6)
+UICorner.Parent = Loader
+
+local Content = Instance.new("Frame")
+Content.Name = "Content"
+Content.BackgroundColor3 = Color3.fromRGB(120, 180, 255)
+Content.Size = UDim2.new(, , 1, )
+Content.BackgroundTransparency = 
+Content.Parent = Loader
+
+local UICornerContent = Instance.new("UICorner")
+UICornerContent.CornerRadius = UDim.new(, 6)
+UICornerContent.Parent = Content
+
+-- Barra "animada"
 task.spawn(function()
-    local remote = ReplicatedStorage:FindFirstChild("CommF_", true)
-    if remote then remote:InvokeServer("SetTeam", getgenv().Config.Team) end
+    local t = 
+    while t < 1 do
+        t += .02
+        Content.Size = UDim2.new(t, , 1, )
+        task.wait(.02)
+    end
+    StatusLabel.Text = "FLOW_FARM_BOUNTY pronto!"
+    task.wait(.7)
+    -- Fade out intro
+    TweenService:Create(INTRO, TweenInfo.new(.6, Enum.EasingStyle.Quad), {GroupTransparency = 1}):Play()
+    task.wait(.6)
+    INTRO.Visible = false
 end)
 
-CreateNotify("FLOW_BOUNTY PRONTO. PRESSIONE 'Q' PARA COMEÇAR.")
+------------------------------------------
+-- PAINEL PRINCIPAL
+------------------------------------------
+
+local GET_KEY = Instance.new("CanvasGroup")
+GET_KEY.Name = "MAIN_PANEL"
+GET_KEY.Size = UDim2.new(1, , 1, )
+GET_KEY.BackgroundTransparency = 1
+GET_KEY.GroupTransparency = 
+GET_KEY.Parent = FlowGui
+
+local Frame = Instance.new("Frame")
+Frame.Name = "MainFrame"
+Frame.AnchorPoint = Vector2.new(.5, .5)
+Frame.Position = UDim2.new(.5, , .5, )
+Frame.Size = UDim2.new(, 420, , 230)
+Frame.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+Frame.BackgroundTransparency = .1
+Frame.Parent = GET_KEY
+
+local UICorner_6 = Instance.new("UICorner")
+UICorner_6.CornerRadius = UDim.new(, 12)
+UICorner_6.Parent = Frame
+
+local UIStroke_5 = Instance.new("UIStroke")
+UIStroke_5.Color = Color3.fromRGB(120, 180, 255)
+UIStroke_5.Thickness = 1
+UIStroke_5.Transparency = .3
+UIStroke_5.Parent = Frame
+
+local UIGradient_2 = Instance.new("UIGradient")
+UIGradient_2.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(, Color3.fromRGB(15,15,35)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(5,5,15))
+}
+UIGradient_2.Rotation = 90
+UIGradient_2.Parent = Frame
+
+-- Título
+local Title_3 = Instance.new("TextLabel")
+Title_3.Name = "Title"
+Title_3.BackgroundTransparency = 1
+Title_3.Position = UDim2.new(, 16, , 8)
+Title_3.Size = UDim2.new(.7, , , 26)
+Title_3.Font = Enum.Font.GothamSemibold
+Title_3.Text = "FLOW_FARM_BOUNTY"
+Title_3.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title_3.TextXAlignment = Enum.TextXAlignment.Left
+Title_3.TextSize = 20
+Title_3.Parent = Frame
+
+local Credit = Instance.new("TextLabel")
+Credit.Name = "Credit"
+Credit.BackgroundTransparency = 1
+Credit.Position = UDim2.new(, 16, , 34)
+Credit.Size = UDim2.new(.7, , , 18)
+Credit.Font = Enum.Font.Gotham
+Credit.Text = "Auto farm de bounty avançado"
+Credit.TextColor3 = Color3.fromRGB(160, 160, 200)
+Credit.TextXAlignment = Enum.TextXAlignment.Left
+Credit.TextSize = 13
+Credit.Parent = Frame
+
+-- Botão fechar
+local Close = Instance.new("TextButton")
+Close.Name = "Close"
+Close.AnchorPoint = Vector2.new(1, )
+Close.Position = UDim2.new(1, -10, , 6)
+Close.Size = UDim2.new(, 24, , 24)
+Close.BackgroundTransparency = 1
+Close.Font = Enum.Font.Gotham
