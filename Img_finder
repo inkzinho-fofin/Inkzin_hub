@@ -1,34 +1,27 @@
 --[[
     FLOW IMAGE FINDER (LOADER MODULE V2)
-    - Conecta com lista.im
-    - Processa opções (1-4) ou ID Direta
+    - Processa a ID padrão: 135908570815238
 ]]
 
 local function ProcessarSistema()
-    -- 1. Carrega a lista de imagens externa
     pcall(function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Lista.%20Im"))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/lista.im"))()
     end)
 
-    local db = getgenv().FlowImagesDatabase or {}
+    local db = getgenv().FlowImagesDatabase or {["Default"] = "135908570815238"}
     local input = getgenv().CustomFruitImg
     local finalID = db["Default"]
 
-    -- 2. Lógica de Seleção
-    if input == nil or input == "" then
+    if input == nil or input == "" or input == 0 then
         finalID = db["Default"]
     elseif db[input] then 
-        -- Se o usuário digitou 1, 2, 3 ou 4
         finalID = db[input]
     else
-        -- Se o usuário digitou uma ID numérica personalizada
         local numericId = tostring(input):match("%d+")
         finalID = numericId or db["Default"]
     end
 
-    -- 3. Entrega o resultado para a Interface
     getgenv().FlowImageData = "rbxassetid://" .. finalID
 end
 
 ProcessarSistema()
-print("[FLOW] Loader: Imagem definida para " .. getgenv().FlowImageData)
