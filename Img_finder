@@ -1,7 +1,29 @@
-local input = getgenv().CustomFruitImg
-if input == nil or input == "" then
-    getgenv().FlowImageData = "rbxassetid://135908570815238"
-else
-    local id = tostring(input):match("%d+")
-    getgenv().FlowImageData = "rbxassetid://" .. (id or "135908570815238")
+--[[
+    FLOW IMAGE FINDER (LOADER MODULE)
+    Este script processa a ID e entrega para a Interface via getgenv
+]]
+
+local function ProcessarID()
+    -- ID Padrão caso o usuário não coloque nada
+    local defaultID = "135908570815238" 
+    local input = getgenv().CustomFruitImg
+
+    -- Verifica se está vazio ou é inválido
+    if input == nil or input == "" or input == 0 then
+        getgenv().FlowImageData = "rbxassetid://" .. defaultID
+        return
+    end
+
+    -- Extrai apenas os números (caso o usuário cole o link completo)
+    local numericId = tostring(input):match("%d+")
+
+    if numericId then
+        getgenv().FlowImageData = "rbxassetid://" .. numericId
+    else
+        getgenv().FlowImageData = "rbxassetid://" .. defaultID
+    end
 end
+
+-- Executa a função e limpa o log
+ProcessarID()
+print("[FLOW] Imagem processada com sucesso: " .. getgenv().FlowImageData)
