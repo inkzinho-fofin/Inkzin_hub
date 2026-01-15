@@ -1,45 +1,55 @@
 --[[
-    FLOW FRUIT FINDER - INTERFACE V22.2 (FIXED)
-    - Unificação de sistemas: V22.1 + V22.2
-    - Sistema de Imagem: Sincronização forçada via getgenv
+    FLOW FRUIT FINDER - INTERFACE V22.3
+    - Modularizado: Core + Image Handler
     - Criador: Hatsune_inkyt
 ]]
 
--- Função de formatação e validação de imagem
-local function GetFormattedID(id)
-    local numericId = tostring(id):match("%d+")
-    if numericId then
-        return "rbxassetid://" .. numericId
-    end
-    return "rbxassetid://135908570815238" -- ID Padrão
-end
-
 local THEME_COLOR = Color3.fromRGB(0, 210, 255)
-local DEFAULT_ID = GetFormattedID(135908570815238)
+local DEFAULT_IMG = "rbxassetid://135908570815238"
 
--- Notificação Inicial
-local function Notify(title, text)
+-- 1. Notificação Inicial
+local function Notify(title, text, icon)
     pcall(function()
         game:GetService("StarterGui"):SetCore("SendNotification", {
             Title = title,
             Text = text,
-            Icon = DEFAULT_ID,
+            Icon = icon or DEFAULT_IMG,
             Duration = 3
         })
     end)
 end
 
 -----------------------------------------------------------
+-- CARREGAMENTO DOS REPOSITÓRIOS (HANDLER E CORE)
+-----------------------------------------------------------
+local function LoadModules()
+    -- Carrega o Handler de Imagem
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_image_handler"))()
+    end)
+    
+    -- Carrega o Core
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"))()
+    end)
+end
+
+LoadModules()
+
+-- Define a imagem final baseada no Handler ou Padrão
+local FinalBgID = getgenv().FlowImageData or DEFAULT_IMG
+
+-----------------------------------------------------------
 -- CONSTRUÇÃO DA UI
 -----------------------------------------------------------
 local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
-sg.Name = "FlowFinder_Unified"
+sg.Name = "FlowFinder_V3"
 
--- Botão Toggle (Fixo no ID padrão)
+-- Botão Toggle
 local ToggleBtn = Instance.new("ImageButton", sg)
 ToggleBtn.Size = UDim2.new(0, 55, 0, 55)
 ToggleBtn.Position = UDim2.new(0, 15, 0, 15)
-ToggleBtn.Image = DEFAULT_ID
+ToggleBtn.Image = DEFAULT_IMG -- Mantém o padrão no botão
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
 Instance.new("UIStroke", ToggleBtn).Color = THEME_COLOR
@@ -53,16 +63,15 @@ MainFrame.ClipsDescendants = true
 Instance.new("UICorner", MainFrame)
 Instance.new("UIStroke", MainFrame).Color = THEME_COLOR
 
--- Imagem de Fundo Dinâmica
+-- Imagem de Fundo (Puxada do novo repositório)
 local BgImg = Instance.new("ImageLabel", MainFrame)
-BgImg.Name = "DynamicBackground"
 BgImg.Size = UDim2.new(1, 0, 1, 0)
 BgImg.BackgroundTransparency = 1
 BgImg.ImageTransparency = 0.85
 BgImg.ZIndex = 1
-BgImg.Image = GetFormattedID(getgenv().CustomFruitImg)
+BgImg.Image = FinalBgID
 
--- Header e Status
+-- Textos
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.Text = "FLOW FRUIT FINDER"
@@ -86,7 +95,7 @@ local StatusLabel = Instance.new("TextLabel", MainFrame)
 StatusLabel.Size = UDim2.new(1, -20, 0, 80)
 StatusLabel.Position = UDim2.new(0, 10, 0.5, 5)
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "CARREGANDO MÓDULOS..."
+StatusLabel.Text = "AGUARDANDO CORE..."
 StatusLabel.TextColor3 = Color3.new(1, 1, 1)
 StatusLabel.Font = Enum.Font.GothamBold
 StatusLabel.TextSize = 13
@@ -94,67 +103,35 @@ StatusLabel.TextWrapped = true
 StatusLabel.ZIndex = 3
 
 -----------------------------------------------------------
--- LÓGICA DE SINCRONIZAÇÃO E OPERAÇÃO
+-- OPERAÇÃO
 -----------------------------------------------------------
-
--- Monitor de Imagem (Real-time Watcher)
-task.spawn(function()
-    local lastCheck = nil
-    while task.wait(0.3) do
-        local currentGlobal = getgenv().CustomFruitImg
-        if currentGlobal ~= lastCheck then
-            local formatted = GetFormattedID(currentGlobal)
-            BgImg.Image = formatted
-            lastCheck = currentGlobal
-            -- Tenta forçar o carregamento do ativo na memória do jogo
-            game:GetService("ContentProvider"):PreloadAsync({BgImg})
-        end
-    end
-end)
 
 ToggleBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
--- Carregamento do Core e Loop de Varredura
 task.spawn(function()
-    local core_url = "https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"
-    
-    if not getgenv().FlowCore then
-        local success, err = pcall(function()
-            loadstring(game:HttpGet(core_url))()
-        end)
-        if not success then 
-            StatusLabel.Text = "ERRO AO BAIXAR CORE!"
-            warn(err)
-            return
-        end
+    local Core = getgenv().FlowCore
+    while not Core do
+        task.wait(1)
+        Core = getgenv().FlowCore
     end
 
-    local Core = getgenv().FlowCore
-    Notify("SISTEMA", "Core carregado com sucesso!")
+    Notify("SISTEMA", "Módulos carregados com sucesso!", FinalBgID)
 
     while true do
-        StatusLabel.Text = "PROCURANDO FRUTAS..."
+        StatusLabel.Text = "VARRENDO SERVIDOR..."
         local fruits = Core.Scan()
         
         if #fruits > 0 then
             for _, f in ipairs(fruits) do
-                local name = f.Name:upper()
-                Notify("FRUTA DETECTADA", "Alvo: " .. name)
-                
-                Core.SmartMove(f:GetPivot(), function(msg, isUrgent)
-                    StatusLabel.Text = msg:upper()
-                    if isUrgent then Notify("MOVIMENTO", msg) end
-                end)
-                
-                StatusLabel.Text = "ARMAZENANDO " .. name .. "..."
+                Notify("FRUTA!", "Indo buscar: " .. f.Name:upper(), FinalBgID)
+                Core.SmartMove(f:GetPivot(), function(msg) StatusLabel.Text = msg:upper() end)
                 Core.Store(f)
-                Notify("SUCESSO", name .. " guardada!")
                 task.wait(2)
             end
         else
-            StatusLabel.Text = "NADA ENCONTRADO.\nTROCANDO SERVIDOR EM 5S..."
+            StatusLabel.Text = "NADA ENCONTRADO. BUSCANDO NOVO SERVIDOR..."
             task.wait(5)
             Core.Hop()
         end
