@@ -1,16 +1,13 @@
 --[[
-    FLOW FRUIT FINDER - V21.4 LOGIC FIX
+    FLOW FRUIT FINDER - V22.1
     - Criador: Hatsune_inkyt
-    - Correção Crítica: Interface só carrega APÓS entrar nos Marines.
-    - Check de Inventário e Mensagens Sincronizadas.
+    - Restaurado: Botão Toggle no canto superior esquerdo.
+    - Funções: Safe Tween 350, NoClip, Auto Team Background, Auto Store, ESP.
 ]]
 
--- Configuração de Imagem via Global Environment
+-- Configuração de Imagem (Editável via getgenv().CustomFruitImg)
 local DEFAULT_IMG = "rbxassetid://135908570815238"
 local UI_IMAGE = getgenv().CustomFruitImg or DEFAULT_IMG
-
-local UI_TITLE = "FLOW FRUIT FINDER"
-local CREATOR_NAME = "by Hatsune_inkyt"
 local THEME_COLOR = Color3.fromRGB(0, 210, 255)
 
 -- Impedir múltiplas execuções
@@ -27,88 +24,62 @@ local VirtualUser = game:GetService("VirtualUser")
 local player = Players.LocalPlayer
 
 -----------------------------------------------------------
--- 1. BLOQUEIO DE SEGURANÇA: ENTRADA NO TIME
--- O script para tudo aqui até garantir que você é Marine
+-- AUTO JOIN MARINES (BACKGROUND)
 -----------------------------------------------------------
-local function EnsureMarines()
+task.spawn(function()
     local remote = ReplicatedStorage:WaitForChild("CommF_", 20)
-    if not remote then return end
-    
-    -- Loop Infinito até o time ser Marines
-    while not (player.Team and player.Team.Name == "Marines") do
-        pcall(function()
-            -- Tenta selecionar o time
-            remote:InvokeServer("SetTeam", "Marines")
-        end)
-        
-        -- Se o PlayerGui não carregou, espera
-        if not player:FindFirstChild("PlayerGui") then
-            task.wait(1)
+    while task.wait(1) do
+        if player.Team == nil or player.Team.Name ~= "Marines" then
+            pcall(function()
+                remote:InvokeServer("SetTeam", "Marines")
+            end)
+        else
+            break 
         end
-        
-        task.wait(0.5) -- Tenta a cada meio segundo
     end
-end
-
--- EXECUTAR O BLOQUEIO ANTES DE TUDO
-EnsureMarines()
-
--- Aguarda o personagem carregar totalmente após a troca de time
-if not player.Character then player.CharacterAdded:Wait() end
-task.wait(1) -- Delay de segurança pós-spawn
-
------------------------------------------------------------
--- SISTEMA ANTI-AFK
------------------------------------------------------------
-player.Idled:Connect(function()
-    VirtualUser:CaptureController()
-    VirtualUser:ClickButton2(Vector2.new())
 end)
 
 -----------------------------------------------------------
--- INTERFACE VISUAL (SÓ CARREGA AGORA)
+-- INTERFACE VISUAL
 -----------------------------------------------------------
 local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
-sg.Name = "FlowFinder_UnifiedUI"
+sg.Name = "FlowFinder_V22_Toggle"
 
+-- Botão para Abrir/Fechar (Canto Superior Esquerdo)
 local OpenBtn = Instance.new("ImageButton", sg)
+OpenBtn.Name = "ToggleButton"
 OpenBtn.Size = UDim2.new(0, 50, 0, 50)
-OpenBtn.Position = UDim2.new(0, 15, 0, 15)
+OpenBtn.Position = UDim2.new(0, 15, 0, 15) -- Posição original restaurada
 OpenBtn.Image = UI_IMAGE
 OpenBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+OpenBtn.BorderSizePixel = 0
 Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
 local btnStroke = Instance.new("UIStroke", OpenBtn)
 btnStroke.Color = THEME_COLOR
 btnStroke.Thickness = 2
 
+-- Frame Principal
 local MainFrame = Instance.new("Frame", sg)
+MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 320, 0, 190)
 MainFrame.Position = UDim2.new(0.5, -160, 0.4, -95)
 MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
+MainFrame.Visible = true 
 Instance.new("UICorner", MainFrame)
+Instance.new("UIStroke", MainFrame).Color = THEME_COLOR
 
 local BgImg = Instance.new("ImageLabel", MainFrame)
 BgImg.Size = UDim2.new(1, 0, 1, 0)
 BgImg.Image = UI_IMAGE
-BgImg.ScaleType = Enum.ScaleType.Stretch
+BgImg.BackgroundTransparency = 1
+BgImg.ImageTransparency = 0.6
 BgImg.ZIndex = 1
 
-local Overlay = Instance.new("Frame", MainFrame)
-Overlay.Size = UDim2.new(1, 0, 1, 0)
-Overlay.BackgroundColor3 = Color3.new(0, 0, 0)
-Overlay.BackgroundTransparency = 0.5
-Overlay.ZIndex = 2
-
-local MainStroke = Instance.new("UIStroke", MainFrame)
-MainStroke.Color = THEME_COLOR
-MainStroke.Thickness = 2
-MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-
+-- Título e Criador
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Text = UI_TITLE
+Title.Text = "FLOW FRUIT FINDER"
 Title.TextColor3 = Color3.new(1, 1, 1)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
@@ -118,7 +89,7 @@ Title.ZIndex = 3
 local Creator = Instance.new("TextLabel", MainFrame)
 Creator.Size = UDim2.new(1, 0, 0, 20)
 Creator.Position = UDim2.new(0, 0, 0, 28)
-Creator.Text = CREATOR_NAME
+Creator.Text = "by Hatsune_inkyt"
 Creator.TextColor3 = THEME_COLOR
 Creator.Font = Enum.Font.GothamMedium
 Creator.TextSize = 12
@@ -127,15 +98,15 @@ Creator.ZIndex = 3
 
 local StatusLabel = Instance.new("TextLabel", MainFrame)
 StatusLabel.Size = UDim2.new(1, -20, 0, 60)
-StatusLabel.Position = UDim2.new(0, 10, 0.5, 0)
+StatusLabel.Position = UDim2.new(0, 10, 0.5, 10)
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "SISTEMA INICIADO..."
+StatusLabel.Text = "INICIANDO..."
 StatusLabel.TextColor3 = Color3.new(1, 1, 1)
-StatusLabel.Font = Enum.Font.GothamMedium
+StatusLabel.Font = Enum.Font.GothamBold
 StatusLabel.TextSize = 14
-StatusLabel.TextWrapped = true
 StatusLabel.ZIndex = 3
 
+-- Lógica do Botão (Abrir/Fechar)
 OpenBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
@@ -145,59 +116,19 @@ local function Notify(msg, isError)
         local n = Instance.new("TextLabel", sg)
         n.Size = UDim2.new(0, 280, 0, 35)
         n.Position = UDim2.new(0.5, -140, 0.15, 0)
-        n.BackgroundColor3 = isError and Color3.fromRGB(100, 0, 0) or Color3.fromRGB(15, 15, 15)
-        n.TextColor3 = isError and Color3.new(1, 1, 1) or THEME_COLOR
+        n.BackgroundColor3 = isError and Color3.fromRGB(150, 0, 0) or Color3.fromRGB(15, 15, 15)
+        n.TextColor3 = Color3.new(1, 1, 1)
         n.Text = msg:upper()
         n.Font = Enum.Font.GothamBold
-        n.TextSize = 13
+        n.TextSize = 12
         Instance.new("UICorner", n)
-        local ns = Instance.new("UIStroke", n)
-        ns.Color = isError and Color3.new(1, 0, 0) or THEME_COLOR
         task.wait(3)
         n:Destroy()
     end)
 end
 
 -----------------------------------------------------------
--- LÓGICA DE MOVIMENTO
------------------------------------------------------------
-local function SmartMove(targetPivot)
-    local char = player.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    
-    local root = char.HumanoidRootPart
-    local dist = (root.Position - targetPivot.Position).Magnitude
-    
-    if dist < 50 then
-        root.CFrame = targetPivot
-        return
-    end
-
-    local speed = 350
-    local timeInfo = dist / speed
-    local tweenInfo = TweenInfo.new(timeInfo, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-    
-    local tween = TweenService:Create(root, tweenInfo, {CFrame = targetPivot})
-    
-    local noclipConn
-    noclipConn = RunService.Stepped:Connect(function()
-        if player.Character then
-            for _, v in pairs(player.Character:GetDescendants()) do
-                if v:IsA("BasePart") and v.CanCollide then
-                    v.CanCollide = false
-                end
-            end
-        end
-    end)
-    
-    tween:Play()
-    tween.Completed:Wait() 
-    
-    if noclipConn then noclipConn:Disconnect() end
-end
-
------------------------------------------------------------
--- SCANNER
+-- LÓGICA TÉCNICA
 -----------------------------------------------------------
 local function CreateESP(object, name)
     if object:FindFirstChild("FruitESP") then return end
@@ -205,7 +136,6 @@ local function CreateESP(object, name)
     billboard.Name = "FruitESP"
     billboard.AlwaysOnTop = true
     billboard.Size = UDim2.new(0, 100, 0, 50)
-    
     local text = Instance.new("TextLabel", billboard)
     text.Size = UDim2.new(1, 0, 1, 0)
     text.BackgroundTransparency = 1
@@ -215,31 +145,38 @@ local function CreateESP(object, name)
     text.TextSize = 14
 end
 
-local function IsAFruit(obj)
-    if (obj:IsA("Tool") or obj:IsA("Model")) then
-        if obj.Name:lower():find("fruit") or obj:FindFirstChild("Handle") then
-            if not obj:FindFirstAncestorOfClass("Model") or not obj:FindFirstAncestorOfClass("Model"):FindFirstChild("Humanoid") then
-                return true
+local function SmartMove(targetPivot)
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local dist = (root.Position - targetPivot.Position).Magnitude
+    if dist < 50 then root.CFrame = targetPivot return end
+    local tween = TweenService:Create(root, TweenInfo.new(dist/350, Enum.EasingStyle.Linear), {CFrame = targetPivot})
+    local nc = RunService.Stepped:Connect(function()
+        pcall(function()
+            for _, v in pairs(char:GetDescendants()) do
+                if v:IsA("BasePart") then v.CanCollide = false end
             end
-        end
-    end
-    return false
+        end)
+    end)
+    tween:Play()
+    tween.Completed:Wait()
+    nc:Disconnect()
 end
 
 local function ScanForFruits()
     local found = {}
     for _, v in ipairs(workspace:GetChildren()) do
-        if IsAFruit(v) then
-            table.insert(found, v)
+        if (v:IsA("Tool") or v:IsA("Model")) and (v.Name:lower():find("fruit") or v:FindFirstChild("Handle")) then
+            if not v:FindFirstAncestorOfClass("Model") or not v:FindFirstAncestorOfClass("Model"):FindFirstChild("Humanoid") then
+                table.insert(found, v)
+            end
         end
     end
     return found
 end
 
 local function ServerHop()
-    StatusLabel.Text = "PROCURANDO NOVO SERVIDOR..."
-    Notify("TROCANDO DE SERVIDOR...", false)
-    task.wait(1)
     local success, content = pcall(function() 
         return game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100") 
     end)
@@ -248,7 +185,7 @@ local function ServerHop()
         for _, s in pairs(servers.data) do
             if s.playing < s.maxPlayers and s.id ~= game.JobId then
                 TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id, player)
-                return
+                break
             end
         end
     end
@@ -258,58 +195,35 @@ end
 -- LOOP PRINCIPAL
 -----------------------------------------------------------
 task.spawn(function()
-    StatusLabel.Text = "CARREGANDO MAPA (AGUARDE 5S)..."
-    task.wait(5)
-    
     while true do
-        StatusLabel.Text = "ESCANEANDO AREA..."
         local fruits = ScanForFruits()
-        
         if #fruits > 0 then
             for _, f in ipairs(fruits) do
-                local fruitName = f.Name
-                CreateESP(f, fruitName)
-                
-                -- 1. Notificar
-                Notify("FRUTA LOCALIZADA: " .. fruitName:gsub("Fruit",""), false)
-                StatusLabel.Text = "INDO ATE: " .. fruitName:upper()
-                
-                -- 2. Ir até a fruta
-                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                    SmartMove(f:GetPivot())
-                end
+                local name = f.Name
+                CreateESP(f, name)
+                Notify("FRUTA ENCONTRADA: " .. name)
+                StatusLabel.Text = "COLETANDO: " .. name:upper()
+                SmartMove(f:GetPivot())
                 task.wait(0.5)
-                
-                -- 3. Tentar armazenar
-                StatusLabel.Text = "TENTANDO ARMAZENAR..."
                 pcall(function()
-                    local storeRemote = ReplicatedStorage:FindFirstChild("CommF_", true)
-                    if storeRemote then
-                        storeRemote:InvokeServer("StoreFruit", fruitName, f)
-                    end
+                    local remote = ReplicatedStorage:FindFirstChild("CommF_", true)
+                    if remote then remote:InvokeServer("StoreFruit", name, f) end
                 end)
-                
-                task.wait(1) -- Delay crítico
-                
-                -- 4. Verificar se funcionou
-                local checkBackpack = player.Backpack:FindFirstChild(fruitName)
-                local checkCharacter = player.Character:FindFirstChild(fruitName)
-                
-                if checkBackpack or checkCharacter then
-                    Notify("ERRO: INVENTÁRIO CHEIO!", true)
-                    StatusLabel.Text = "FALHA: INVENTÁRIO CHEIO"
-                else
-                    Notify("FRUTA ARMAZENADA!", false)
-                    StatusLabel.Text = "ARMAZENADA COM SUCESSO"
-                end
-                
-                task.wait(1.5)
+                task.wait(1)
+                local check = player.Backpack:FindFirstChild(name) or (player.Character and player.Character:FindFirstChild(name))
+                if check then Notify("ERRO: INVENTÁRIO CHEIO!", true) else Notify("SUCESSO: ARMAZENADA!") end
             end
         else
-            StatusLabel.Text = "NADA AQUI. TROCANDO EM 5S..."
-            task.wait(5)
+            StatusLabel.Text = "NADA ENCONTRADO. TROCANDO..."
+            task.wait(3)
             ServerHop()
         end
         task.wait(2)
     end
+end)
+
+-- Anti-AFK
+player.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
 end)
