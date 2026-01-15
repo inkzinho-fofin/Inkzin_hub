@@ -1,8 +1,8 @@
 local Interface = {}
 
 -- URLs dos outros scripts (Substitua pelos seus links RAW do Github)
-local CORE_URL = "URL_DO_SEU_GITHUB_CORE"
-local BTN_URL = "URL_DO_SEU_GITHUB_BUTTON"
+local CORE_URL = "https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Floe_fruit.finder_core"
+local BTN_URL = "https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Lista.%20Im"
 
 function Interface.Load()
     -- 1. Carrega os módulos dependentes
