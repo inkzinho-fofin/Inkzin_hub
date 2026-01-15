@@ -1,8 +1,21 @@
--- [[ DATABASE DE IMAGENS - lista.im ]] --
-getgenv().FlowImagesDatabase = {
-    [1] = "135650318721215",
-    [2] = "73770110559942",
-    [3] = "77185551674086",
-    [4] = "87545620350537",
-    ["Default"] = "135908570815238" -- ID Padrão definida aqui
-}
+-- flow_fruit_finder.button
+local ButtonModule = {}
+
+function ButtonModule.Create(iconId, callback)
+    local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+    local ImageButton = Instance.new("ImageButton", ScreenGui)
+
+    ImageButton.Size = UDim2.new(0, 50, 0, 50)
+    ImageButton.Position = UDim2.new(0, 10, 0, 10)
+    ImageButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    ImageButton.Image = "rbxassetid://" .. iconId
+    
+    -- Deixar Redondo
+    local UICorner = Instance.new("UICorner", ImageButton)
+    UICorner.CornerRadius = UDim.new(1, 0)
+
+    ImageButton.MouseButton1Click:Connect(callback)
+    return ScreenGui
+end
+
+return ButtonModule
