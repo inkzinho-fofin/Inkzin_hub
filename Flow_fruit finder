@@ -1,8 +1,8 @@
 --[[
-    FLOW FRUIT FINDER - V21.2 SAFE TWEEN
+    FLOW FRUIT FINDER - V21.3 STABLE
     - Criador: Hatsune_inkyt
-    - Movimento: Tween Suave (Velocidade 350) + NoClip para evitar Ban.
-    - Sistema Híbrido: Imagem via getgenv + Scanner Avançado.
+    - Correções: Auto Team (Loop), Sync de Mensagens e Check de Inventário.
+    - Movimento: Tween 350 + NoClip.
 ]]
 
 -- Configuração de Imagem via Global Environment
@@ -35,15 +35,20 @@ player.Idled:Connect(function()
 end)
 
 -----------------------------------------------------------
--- AUTO JOIN MARINES
+-- AUTO JOIN MARINES (CORRIGIDO COM LOOP)
 -----------------------------------------------------------
-local function JoinTeam()
-    local remote = ReplicatedStorage:WaitForChild("CommF_", 15)
-    if remote then
-        remote:InvokeServer("SetTeam", "Marines")
+task.spawn(function()
+    local remote = ReplicatedStorage:WaitForChild("CommF_", 20)
+    if not remote then return end
+    
+    -- Tenta entrar no time até conseguir
+    while player.Team == nil or player.Team.Name ~= "Marines" do
+        pcall(function()
+            remote:InvokeServer("SetTeam", "Marines")
+        end)
+        task.wait(1) -- Tenta a cada 1 segundo se falhar
     end
-end
-task.spawn(JoinTeam)
+end)
 
 -----------------------------------------------------------
 -- INTERFACE VISUAL
@@ -120,19 +125,19 @@ OpenBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
-local function Notify(msg)
+local function Notify(msg, isError)
     task.spawn(function()
         local n = Instance.new("TextLabel", sg)
         n.Size = UDim2.new(0, 280, 0, 35)
         n.Position = UDim2.new(0.5, -140, 0.15, 0)
-        n.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-        n.TextColor3 = THEME_COLOR
+        n.BackgroundColor3 = isError and Color3.fromRGB(100, 0, 0) or Color3.fromRGB(15, 15, 15)
+        n.TextColor3 = isError and Color3.new(1, 1, 1) or THEME_COLOR
         n.Text = msg:upper()
         n.Font = Enum.Font.GothamBold
         n.TextSize = 13
         Instance.new("UICorner", n)
         local ns = Instance.new("UIStroke", n)
-        ns.Color = THEME_COLOR
+        ns.Color = isError and Color3.new(1, 0, 0) or THEME_COLOR
         task.wait(3)
         n:Destroy()
     end)
@@ -148,20 +153,17 @@ local function SmartMove(targetPivot)
     local root = char.HumanoidRootPart
     local dist = (root.Position - targetPivot.Position).Magnitude
     
-    -- Se estiver perto (menos de 50 studs), teleporte direto é seguro
     if dist < 50 then
         root.CFrame = targetPivot
         return
     end
 
-    -- Se estiver longe, usar Tween para evitar Kick/Ban
     local speed = 350
     local timeInfo = dist / speed
     local tweenInfo = TweenInfo.new(timeInfo, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
     
     local tween = TweenService:Create(root, tweenInfo, {CFrame = targetPivot})
     
-    -- Ativar NoClip durante o voo
     local noclipConn
     noclipConn = RunService.Stepped:Connect(function()
         if player.Character then
@@ -174,7 +176,7 @@ local function SmartMove(targetPivot)
     end)
     
     tween:Play()
-    tween.Completed:Wait() -- Espera chegar no destino
+    tween.Completed:Wait() 
     
     if noclipConn then noclipConn:Disconnect() end
 end
@@ -221,7 +223,7 @@ end
 
 local function ServerHop()
     StatusLabel.Text = "PROCURANDO NOVO SERVIDOR..."
-    Notify("TROCANDO DE SERVIDOR...")
+    Notify("TROCANDO DE SERVIDOR...", false)
     task.wait(1)
     local success, content = pcall(function() 
         return game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100") 
@@ -238,10 +240,10 @@ local function ServerHop()
 end
 
 -----------------------------------------------------------
--- LOOP PRINCIPAL
+-- LOOP PRINCIPAL (SEQUENCIAL PARA EVITAR ERROS)
 -----------------------------------------------------------
 task.spawn(function()
-    StatusLabel.Text = "CARREGANDO MAPA (AGUARDE 5S)..."
+    StatusLabel.Text = "AGUARDANDO MAPA (5S)..."
     task.wait(5)
     
     while true do
@@ -253,33 +255,49 @@ task.spawn(function()
                 local fruitName = f.Name
                 CreateESP(f, fruitName)
                 
+                -- 1. Notifica que achou e começa a ir
+                Notify("FRUTA LOCALIZADA: " .. fruitName:gsub("Fruit",""), false)
                 StatusLabel.Text = "INDO ATE: " .. fruitName:upper()
-                Notify("FRUTA LOCALIZADA!")
                 
-                -- Usa o movimento inteligente (Tween ou TP curto)
                 if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                     SmartMove(f:GetPivot())
                 end
                 
-                task.wait(0.5) -- Pequeno delay ao chegar
+                -- 2. Chegou na fruta
+                task.wait(0.5) 
                 
-                StatusLabel.Text = "ARMAZENANDO: " .. fruitName:upper()
+                -- 3. Tenta armazenar
+                StatusLabel.Text = "TENTANDO ARMAZENAR..."
+                local stored = false
                 
-                -- Tenta armazenar
-                local successStore = pcall(function()
+                pcall(function()
                     local storeRemote = ReplicatedStorage:FindFirstChild("CommF_", true)
                     if storeRemote then
+                        -- Tenta guardar a fruta
                         storeRemote:InvokeServer("StoreFruit", fruitName, f)
                     end
                 end)
                 
-                if successStore then
-                    Notify("FRUTA ARMAZENADA!")
+                task.wait(1) -- Delay para o servidor processar
+                
+                -- 4. Verificação Real: Se a fruta ainda estiver no inventário/char, falhou
+                local checkBackpack = player.Backpack:FindFirstChild(fruitName)
+                local checkCharacter = player.Character:FindFirstChild(fruitName)
+                
+                if checkBackpack or checkCharacter then
+                    -- Falhou (Provavelmente inventário cheio)
+                    Notify("ERRO: INVENTÁRIO CHEIO!", true)
+                    StatusLabel.Text = "INVENTÁRIO CHEIO."
+                else
+                    -- Sucesso (Fruta sumiu do inventário)
+                    Notify("FRUTA ARMAZENADA!", false)
+                    StatusLabel.Text = "ARMAZENADA COM SUCESSO."
                 end
-                task.wait(1)
+                
+                task.wait(1.5)
             end
         else
-            StatusLabel.Text = "NADA ENCONTRADO. TROCANDO EM 5S..."
+            StatusLabel.Text = "NADA AQUI. TROCANDO EM 5S..."
             task.wait(5)
             ServerHop()
         end
