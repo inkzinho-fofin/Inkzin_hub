@@ -1,179 +1,48 @@
--- [[ INTERFACE FLOW FRUIT FINDER ]]
+-- flow_fruit_finder.interface
+local Interface = {}
 
--- 1. Verificação de Configurações (Getgenv)
-local config = getgenv().FlowInterface or {}
-local bgID = config.BackgroundID or "135908570815238"
-local iconID = config.IconID or "rbxassetid://135908570815238"
-local coreURL = "https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Floe_fruit.finder_core"
+function Interface.CreateMain(config)
+    local MainGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+    local Frame = Instance.new("Frame", MainGui)
+    Frame.Size = UDim2.new(0, 300, 0, 200)
+    Frame.Position = UDim2.new(0.5, -150, 0.5, -100)
+    Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Frame.Visible = false
 
--- Função para garantir formato de imagem rbxassetid
-local function getImg(id)
-    id = tostring(id)
-    if id:find("rbxassetid://") or id:find("http") then return id end
-    return "rbxassetid://" .. id
+    local Title = Instance.new("TextLabel", Frame)
+    Title.Text = "flow_fruit finder | By Hatsune_inkyt"
+    Title.Size = UDim2.new(1, 0, 0, 30)
+    Title.TextColor3 = Color3.new(1, 1, 1)
+
+    local StatusLabel = Instance.new("TextLabel", Frame)
+    StatusLabel.Name = "Status"
+    StatusLabel.Text = "Aguardando..."
+    StatusLabel.Size = UDim2.new(1, 0, 0, 50)
+    StatusLabel.Position = UDim2.new(0, 0, 0.4, 0)
+    StatusLabel.TextColor3 = Color3.new(0, 1, 0)
+
+    -- Sistema de Logs
+    local LogFrame = Instance.new("Frame", MainGui)
+    LogFrame.Position = UDim2.new(1, -250, 1, -100)
+    LogFrame.Size = UDim2.new(0, 240, 0, 80)
+    LogFrame.BackgroundTransparency = 0.5
+
+    local LogIcon = Instance.new("ImageLabel", LogFrame)
+    LogIcon.Size = UDim2.new(0, 30, 0, 30)
+    LogIcon.Position = UDim2.new(1, -35, 0, 5)
+    LogIcon.Image = "rbxassetid://" .. (getgenv().CustomIcon or "135908570815238")
+
+    function Interface.UpdateStatus(msg)
+        StatusLabel.Text = msg
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Flow Fruit Finder",
+            Text = msg,
+            Icon = "rbxassetid://135908570815238",
+            Duration = 5
+        })
+    end
+
+    return MainGui, Frame
 end
 
--- 2. Criação da UI
-local CoreGui = game:GetService("CoreGui")
-local lp = game.Players.LocalPlayer
-local UserInputService = game:GetService("UserInputService")
-
-if CoreGui:FindFirstChild("FlowUI") then CoreGui.FlowUI:Destroy() end
-
-local sg = Instance.new("ScreenGui", CoreGui)
-sg.Name = "FlowUI"
-sg.ResetOnSpawn = false
-
--- Botão de Toggle (Redondo)
-local btn = Instance.new("ImageButton", sg)
-btn.Size = UDim2.new(0, 55, 0, 55)
-btn.Position = UDim2.new(0, 15, 0, 15)
-btn.Image = getImg(iconID)
-btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-btn.BorderSizePixel = 0
-Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
-
--- Painel Principal
-local frame = Instance.new("ImageLabel", sg)
-frame.Size = UDim2.new(0, 420, 0, 280)
-frame.AnchorPoint = Vector2.new(0.5, 0.5)
-frame.Position = UDim2.new(0.5, 0, 0.5, 0)
-frame.Image = getImg(bgID)
-frame.Visible = false
-frame.Active = true
-frame.Selectable = true
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
-local stroke = Instance.new("UIStroke", frame)
-stroke.Thickness = 2
-stroke.Color = Color3.new(1, 1, 1)
-
--- Título e Créditos
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Position = UDim2.new(0, 10, 0, 5)
-title.Text = "FLOW FRUIT FINDER | v1.0"
-title.TextColor3 = Color3.new(1, 1, 1)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 16
-title.BackgroundTransparency = 1
-title.TextXAlignment = Enum.TextXAlignment.Left
-
-local author = Instance.new("TextLabel", frame)
-author.Size = UDim2.new(1, -20, 0, 20)
-author.Position = UDim2.new(0, 10, 0, 22)
-author.Text = "by Hatsune_inkyt"
-author.TextColor3 = Color3.fromRGB(200, 200, 200)
-author.Font = Enum.Font.Gotham
-author.TextSize = 11
-author.BackgroundTransparency = 1
-author.TextXAlignment = Enum.TextXAlignment.Left
-
--- Área de Logs
-local scroll = Instance.new("ScrollingFrame", frame)
-scroll.Size = UDim2.new(0.9, 0, 0.7, 0)
-scroll.Position = UDim2.new(0.05, 0, 0.22, 0)
-scroll.BackgroundTransparency = 1
-scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-scroll.ScrollBarThickness = 2
-
-local layout = Instance.new("UIListLayout", scroll)
-layout.Padding = UDim.new(0, 5)
-
--- 3. Função de Logs
-local lastLog = ""
-local function addLog(msg)
-    if msg == lastLog then return end
-    lastLog = msg
-    
-    local entry = Instance.new("Frame", scroll)
-    entry.Size = UDim2.new(1, 0, 0, 25)
-    entry.BackgroundTransparency = 1
-
-    local img = Instance.new("ImageLabel", entry)
-    img.Size = UDim2.new(0, 20, 0, 20)
-    img.Image = getImg(iconID)
-    img.BackgroundTransparency = 1
-
-    local txt = Instance.new("TextLabel", entry)
-    txt.Size = UDim2.new(1, -25, 1, 0)
-    txt.Position = UDim2.new(0, 25, 0, 0)
-    txt.Text = msg
-    txt.TextColor3 = Color3.new(1, 1, 1)
-    txt.Font = Enum.Font.GothamSemibold
-    txt.TextSize = 13
-    txt.BackgroundTransparency = 1
-    txt.TextXAlignment = Enum.TextXAlignment.Left
-
-    scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
-    scroll.CanvasPosition = Vector2.new(0, scroll.CanvasSize.Y.Offset)
-end
-
--- 4. Arrastar Interface (Draggable)
-local dragging, dragInput, dragStart, startPos
-frame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = frame.Position
-    end
-end)
-frame.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
-        local delta = input.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
--- 5. Botão de abrir/fechar
-btn.MouseButton1Click:Connect(function()
-    frame.Visible = not frame.Visible
-end)
-
--- 6. Carregamento da Core Library
-task.spawn(function()
-    addLog("Iniciando Flow System...")
-    local success, content = pcall(function()
-        return game:HttpGet(coreURL)
-    end)
-    
-    if success and content then
-        addLog("Executando Core Library...")
-        local func, err = loadstring(content)
-        if func then 
-            task.spawn(func)
-            addLog("Core carregado com sucesso!")
-        else
-            addLog("Erro de sintaxe no Core.")
-            warn(err)
-        end
-    else
-        addLog("Erro ao baixar a Core Library.")
-    end
-end)
-
--- 7. Monitoramento
-task.spawn(function()
-    local lastTeam = ""
-    while task.wait(1) do
-        -- Sincronizar Fundo
-        local currentBG = getgenv().FlowInterface and getgenv().FlowInterface.BackgroundID or bgID
-        if frame.Image ~= getImg(currentBG) then frame.Image = getImg(currentBG) end
-
-        -- Log: Time
-        if lp.Team and lp.Team.Name ~= lastTeam then
-            addLog("Time atual: " .. lp.Team.Name)
-            lastTeam = lp.Team.Name
-        end
-
-        -- Log: Frutas
-        for _, v in pairs(workspace:GetChildren()) do
-            if v:IsA("Tool") and (v.Name:find("Fruit") or v.Name:find("Fruta")) then
-                addLog("Detectado: " .. v.Name)
-                task.wait(5) -- Evita spam de log para a mesma fruta
-            end
-        end
-    end
-end)
+return Interface
