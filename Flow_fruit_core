@@ -172,4 +172,91 @@ function BloxCore:Scan()
     end
 end
 
+-- [[ FLOW_FRUIT FINDER - ULTIMATE UPDATE ]] --
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local assetId = "rbxassetid://135908570815238"
+
+-- Limpeza
+if CoreGui:FindFirstChild("FlowFruitGui_v2") then CoreGui.FlowFruitGui_v2:Destroy() end
+
+local screenGui = Instance.new("ScreenGui", CoreGui)
+screenGui.Name = "FlowFruitGui_v2"
+
+-- Notificações Roblox
+local function notify(title, text)
+    StarterGui:SetCore("SendNotification", {
+        Title = title,
+        Text = text,
+        Icon = assetId,
+        Duration = 5
+    })
+end
+
+-- UI
+local mainFrame = Instance.new("ImageLabel", screenGui)
+mainFrame.Size = UDim2.new(0, 300, 0, 220)
+mainFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
+mainFrame.Image = assetId
+mainFrame.Active = true
+mainFrame.Draggable = true
+Instance.new("UICorner", mainFrame)
+
+local monitorLabel = Instance.new("TextLabel", mainFrame)
+monitorLabel.Size = UDim2.new(0.8, 0, 0.3, 0)
+monitorLabel.Position = UDim2.new(0.1, 0, 0.45, 0)
+monitorLabel.BackgroundTransparency = 1
+monitorLabel.TextColor3 = Color3.new(1, 1, 1)
+monitorLabel.TextSize = 18
+monitorLabel.Font = Enum.Font.SourceSansBold
+monitorLabel.Text = "Iniciando..."
+
+-- Função Server Hop Real
+local function serverHop()
+    notify("Server Hop", "Buscando novo servidor...")
+    local success, servers = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")).data
+    end)
+    
+    if success then
+        for _, s in pairs(servers) do
+            if s.playing < s.maxPlayers and s.id ~= game.JobId then
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id)
+                return
+            end
+        end
+    end
+end
+
+-- Entrar na Equipe (Corrigido para Blox Fruits)
+local function forceJoinMarines()
+    local remote = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("CommF_")
+    if remote then
+        remote:InvokeServer("SetTeam", "Marines")
+    end
+end
+
+-- Global Logs para o Core
+_G.FlowFruitLogs = function(tipo)
+    if tipo == "scan" then monitorLabel.Text = "Varrendo mapa..."
+    elseif tipo == "found" then notify("SISTEMA", "Fruta Detectada!")
+    elseif tipo == "hop" then serverHop() end
+end
+
+-- Iniciar Processos
+forceJoinMarines()
+task.spawn(function()
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"))()
+    end)
+end)
+
+
 return BloxCore
