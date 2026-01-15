@@ -1,0 +1,50 @@
+-- FLOW_CORE.lua
+local Core = {}
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+
+function Core.SmartMove(targetPivot)
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local dist = (root.Position - targetPivot.Position).Magnitude
+    if dist < 50 then root.CFrame = targetPivot return end
+    
+    local tween = TweenService:Create(root, TweenInfo.new(dist/350, Enum.EasingStyle.Linear), {CFrame = targetPivot})
+    local nc = RunService.Stepped:Connect(function()
+        pcall(function()
+            for _, v in pairs(char:GetDescendants()) do
+                if v:IsA("BasePart") then v.CanCollide = false end
+            end
+        end)
+    end)
+    tween:Play()
+    tween.Completed:Wait()
+    nc:Disconnect()
+end
+
+function Core.ScanForFruits()
+    local found = {}
+    for _, v in ipairs(workspace:GetChildren()) do
+        if (v:IsA("Tool") or v:IsA("Model")) and (v.Name:lower():find("fruit") or v:FindFirstChild("Handle")) then
+            if not v:FindFirstAncestorOfClass("Model") or not v:FindFirstAncestorOfClass("Model"):FindFirstChild("Humanoid") then
+                table.insert(found, v)
+            end
+        end
+    end
+    return found
+end
+
+function Core.Store(name, fruitObj)
+    pcall(function()
+        local remote = ReplicatedStorage:FindFirstChild("CommF_", true)
+        if remote then remote:InvokeServer("StoreFruit", name, fruitObj) end
+    end)
+end
+
+getgenv().FlowCore = Core
+return Core
