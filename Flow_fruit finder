@@ -1,227 +1,377 @@
--- Configurações de Identidade
-local UI_TITLE = "flow_fruit finder"
-local CREATOR_NAME = "Hatsune_inkyt"
-local IMAGE_ID = "rbxassetid://89413699428471"
+-- if _G.HOHO_RAN then return end
+-- _G.HOHO_RAN = true
+-- most executors issue
+-- for Index, Value in next, debug do
+--     if not getgenv()[Index] then
+--         getgenv()[Index] = Value
+--     end
+-- end
 
--- Serviços
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local StarterGui = game:GetService("StarterGui")
-local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
-local ContentProvider = game:GetService("ContentProvider")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+repeat wait() until game:IsLoaded() and game.Players.LocalPlayer
 
-local player = Players.LocalPlayer
-local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
-sg.Name = "FlowFruitFinder_V3"
+-- local ExecutorName = identifyexecutor()
 
--- Forçar carregamento da imagem
-task.spawn(function()
-    ContentProvider:PreloadAsync({IMAGE_ID})
-end)
+-- getgenv().bit = bit32 -- Cubix & Awp issue :)
 
--- Função Arrastável
-local function makeDraggable(gui)
-    local dragging, dragInput, dragStart, startPos
-    gui.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true; dragStart = input.Position; startPos = gui.Position
-        end
-    end)
-    gui.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            gui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-    end)
+-- if ExecutorName:find("Swift") then -- don't ask me idk why it work :D?
+-- 	task.spawn(function()
+-- 	    loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/main/HohoHub.lua'))()
+-- 	end)
+-- 	wait(2.5)
+-- 	for i, v in pairs(game.CoreGui:GetChildren()) do
+-- 	    if v.Name:find("Hoho") then
+-- 	        v:Destroy()
+-- 	    end
+-- 	end
+-- elseif ExecutorName:find("Seli") then -- Seliware
+-- 	local rgenv = getrenv()
+-- 	local renv = getrawmetatable(rgenv).__index
+-- 	for i,v in next, renv do
+-- 		rgenv[i] = v
+-- 	end
+-- end
+
+-- cloneref
+-- local a=Instance.new("Part")for b,c in pairs(getreg())do if type(c)=="table"and#c then if rawget(c,"__mode")=="kvs"then for d,e in pairs(c)do if e==a then getgenv().InstanceList=c;break end end end end end;local f={}function f.invalidate(g)if not InstanceList then return end;for b,c in pairs(InstanceList)do if c==g then InstanceList[b]=nil;return g end end end;if not cloneref then getgenv().cloneref=f.invalidate end
+-- require
+-- if clonefunction and getrenv and getidentity and setidentity then local a=clonefunction(getrenv().require)getgenv().require=function(...)local b=getidentity()setidentity(1)local c=a(...)setidentity(b)return c end end
+
+local notify = loadstring(game:HttpGet("https://raw.githubusercontent.com/acsu123/HOHO_H/main/Notification.lua"))()
+
+-- if _G.HohoVersion == "v3" or _G["Fumo Blox Fruit - HoHo Hub Kaitun V3"] or _G["HoHo Hub Auto Bounty V3"] or _G["HoHo Fruits Collector"] or _G.HOHO_PVP_UI or _G.HOHO_SERVER_ID then
+	-- return loadstring(game:HttpGet("https://raw.githubusercontent.com/acsu123/HohoV2/Free/BloxFruitFreeV3.lua"))()
+-- end
+
+-- _G.HOHO_AD = {
+-- 	[1] = {link="https://gcdnb.pbrd.co/images/AVitm37MSdIY.png", exp=tick()+9999, read = "https://discord.gg/CWvQUcfr25"},
+-- }
+local list = {
+	--Adopt Me
+	[383310974] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/refs/heads/Free/AdoptMe.lua'))()",
+	
+	--GO FISHING
+	[6764180126] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/refs/heads/Free/GOFISHING.lua'))()",
+	
+	--Fisch
+	[5750914919] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/refs/heads/Free/Fisch.lua'))()",
+	
+	--Pet Catchers
+	[5686465822] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Free/PetCatchers.lua'))()",
+	
+	--Slap Battles
+	[2380077519] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Free/SlapBattles.lua'))()",
+	
+	--Sol's RNG
+	[5361032378] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Free/SolRNG.lua'))()",
+	
+	--The Strongest Battlegrounds
+	[3808081382] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Free/TheStrongestBattleground.lua'))()",
+	
+	--DOORS
+	[2440500124] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Free/Doors.lua'))()",
+	
+	--BLADE BALL
+	[4777817887] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Free/BladeBall.lua'))()",
+	
+	--HONKAI STAR RAIL SIMULATOR
+	[5477548919] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Free/HonkaiStarRailSimulator.lua'))()",
+	
+	--BedWars
+	[2619619496] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/GAME/main/bedwar.txt'))()",
+
+	--Element Battle Ground
+	[224422602] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/SCRIPTS/elementBattlegr.lua'))()",
+
+	--King Legacy
+	[1451439645] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Free/KingLegacyFree.lua'))()",
+
+	--Blox Fruit
+	[994732206] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/main/BloxFruit/BloxFruitTEST_ONLY.lua'))()",
+
+	--Pet Simulator X
+	[2316994223] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Free/PetSimXFree.lua'))()",
+
+	--Zombie Attack
+	[504035427]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/SCRIPTS/ZombieAtack.lua'))()",
+
+	--Two Piece
+	[5303541547]="loadstring(game:HttpGet('https://raw.githubusercontent.com/AlongNgu/alonebruh/main/twoPiecehoho.lua'))()",
+
+	--Dungeon Quest
+	[848145103]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/Paid/DunegonQuest.lua'))()",
+
+	--Tradelands
+	[92096286]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/SCRIPTS/TradeLands.lua'))()",
+
+	--Anime Fighters Simulator
+	[2324662457]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/SCRIPTS/anime%20fighters%20simulator.lua'))()",
+
+	--Arsenal
+	[111958650]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/SCRIPTS/Arsenal.lua'))()",
+
+	--Break In
+	[1318971886]="loadstring(game:HttpGet('https://pastebin.com/raw/xUGJt9Ry', true))()",
+
+	--Tower of Hell
+	[703124385]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/SCRIPTS/TowerOfHell.lua'))()",
+
+	--steve's one piece
+	[741590026]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/SCRIPTS/SteveOnePiece.lua'))()",
+
+	--Murder Mystery 2
+	[66654135]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/GAME/main/muder%20mys..2.txt'))()",
+
+	--Giant Survival!
+	[1342991001]="loadstring(game:HttpGet('https://pastebin.com/raw/zABEESgr', true))()",
+
+	--Field Trip Z
+	[1701332290]="loadstring(game:HttpGet('https://pastebin.com/raw/aY7Z3Nd3', true))()",
+
+	--Mad City
+	[498490399]="loadstring(game:HttpGet('https://pastebin.com/raw/EwnNCfin', true))()",
+
+	--vn piece
+	[1493595237]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/SCRIPTS/vn%20Piece%20script-obfuscated.lua', true))()",
+	
+	--Ro Fruit
+	[3904583189]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Free/RoFruitFree.lua', true))()",
+
+	--Collect All Pets
+	[3359505957]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Free/CollectAllPetsFree.lua', true))()",
+	
+	--GPO
+	[648454481]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Free/GPOFree.lua', true))()",
+
+	--Anime Defense Simulator
+	[4205109410]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Free/AnimeDefenseSimulatorFree.lua', true))()",
+
+	--Anime Soul Simulator
+	[4098816381]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Free/AnimeSoulSimulatorFree.lua', true))()",
+}
+-- local listPre = {
+-- 	--HONKAI STAR RAIL SIMULATOR
+-- 	[5477548919] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Free/HonkaiStarRailSimulator.lua'))()",
+	
+-- 	--BedWars
+-- 	[2619619496] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/GAME/main/bedwar.txt'))()",
+
+-- 	--Element Battle Ground
+-- 	[224422602] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/SCRIPTS/elementBattlegr.lua'))()",
+
+-- 	--King Legacy
+-- 	[1451439645] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Pre/KingLegacyPre.lua'))()",
+
+-- 	--Blox Fruit
+-- 	[994732206] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/main/BloxFruit/BloxFruitTEST_ONLY.lua'))()",
+
+-- 	--Pet Simulator X
+-- 	[2316994223] = "loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Free/PetSimXFree.lua'))()",
+
+-- 	--Zombie Attack
+-- 	[504035427]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/SCRIPTS/ZombieAtack.lua'))()",
+
+-- 	--Two Piece
+-- 	[5303541547]="loadstring(game:HttpGet('https://raw.githubusercontent.com/AlongNgu/alonebruh/main/twoPiecehoho.lua'))()",
+
+-- 	--Dungeon Quest
+-- 	[848145103]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/Paid/DunegonQuest.lua'))()",
+
+-- 	--Tradelands
+-- 	[92096286]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/SCRIPTS/TradeLands.lua'))()",
+
+-- 	--Anime Fighters Simulator
+-- 	[2324662457]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/SCRIPTS/anime%20fighters%20simulator.lua'))()",
+
+-- 	--Arsenal
+-- 	[111958650]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/SCRIPTS/Arsenal.lua'))()",
+
+-- 	--Break In
+-- 	[1318971886]="loadstring(game:HttpGet('https://pastebin.com/raw/xUGJt9Ry', true))()",
+
+-- 	--Tower of Hell
+-- 	[703124385]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/SCRIPTS/TowerOfHell.lua'))()",
+
+-- 	--steve's one piece
+-- 	[741590026]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/SCRIPTS/SteveOnePiece.lua'))()",
+
+-- 	--Murder Mystery 2
+-- 	[66654135]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/GAME/main/muder%20mys..2.txt'))()",
+
+-- 	--Giant Survival!
+-- 	[1342991001]="loadstring(game:HttpGet('https://pastebin.com/raw/zABEESgr', true))()",
+
+-- 	--Field Trip Z
+-- 	[1701332290]="loadstring(game:HttpGet('https://pastebin.com/raw/aY7Z3Nd3', true))()",
+
+-- 	--Mad City
+-- 	[498490399]="loadstring(game:HttpGet('https://pastebin.com/raw/EwnNCfin', true))()",
+
+-- 	--vn piece
+-- 	[1493595237]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HOHO_H/SCRIPTS/vn%20Piece%20script-obfuscated.lua', true))()",
+	
+-- 	--Ro Fruit
+-- 	[3904583189]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Pre/RoFruitPre.lua', true))()",
+	
+-- 	--Collect All Pets
+-- 	[3359505957]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Pre/CollectAllPetsPre.lua', true))()",
+	
+-- 	--GPO
+-- 	[648454481]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Pre/GPOPre.lua', true))()",
+
+-- 	--Anime Defense Simulator
+-- 	[4205109410]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Pre/AnimeDefenseSimulatorPre.lua', true))()",
+	
+-- 	--Anime Soul Simulator
+-- 	[4098816381]="loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/Pre/AnimeSoulSimulatorPre.lua', true))()",
+-- }
+-- _G.GameSupport = {"Pet Simulator X","GPO - Grand Piece Online","Blox Fruit","King Legacy","Anime Soul Simulator","Anime Defense Simulator","Ro Fruit","Collect All Pets","Tower of Hell","Break In","Arsenal","Mad City","Viet Nam Piece","Field Trip Z","Giant Survival!","Murder Mystery 2","steve's one piece","Anime Fighters Simulator","Tradelands","Dungeon Quest","Two Piece"}
+_G.HoHoLoaded = true
+-- _G.MY_KEY_IS = "No_Key"
+if script_key then
+	_G.MY_KEY_IS = script_key
 end
 
--- UI Principal com Bordas
-local MainFrame = Instance.new("ImageLabel", sg)
-MainFrame.Size = UDim2.new(0, 300, 0, 350)
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -175)
-MainFrame.Image = IMAGE_ID
-MainFrame.Visible = true
-MainFrame.Active = true
-MainFrame.BorderSizePixel = 2
-MainFrame.BorderColor3 = Color3.fromRGB(255, 255, 255)
-makeDraggable(MainFrame)
+-- spawn(function()
+--     local function CoreGuiAdd(a)local b,c=pcall(function()a.Parent=gethui()end)if c then warn("failed to add",a.Name,"to gethui!")local b,c=pcall(function()a.Parent=game.CoreGui end)if c then a.DisplayOrder=100000;a.ResetOnSpawn=false;a.Parent=game.Players.LocalPlayer:WaitForChild("PlayerGui")warn("failed to add",a.Name,"to coregui!")end end end
 
-local UIStroke = Instance.new("UIStroke", MainFrame)
-UIStroke.Thickness = 2
-UIStroke.Color = Color3.new(1, 1, 1)
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
-
-local Overlay = Instance.new("Frame", MainFrame)
-Overlay.Size = UDim2.new(1, 0, 1, 0)
-Overlay.BackgroundColor3 = Color3.new(0, 0, 0)
-Overlay.BackgroundTransparency = 0.5
-Instance.new("UICorner", Overlay)
-
--- Títulos e Créditos
-local Title = Instance.new("TextLabel", MainFrame)
-Title.Text = UI_TITLE:upper()
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.Font = Enum.Font.GothamBold
-Title.TextColor3 = Color3.new(1, 1, 1)
-Title.TextSize = 20
-Title.BackgroundTransparency = 1
-
-local Creator = Instance.new("TextLabel", MainFrame)
-Creator.Text = "by " .. CREATOR_NAME
-Creator.Position = UDim2.new(0, 0, 0, 30)
-Creator.Size = UDim2.new(1, 0, 0, 20)
-Creator.Font = Enum.Font.Gotham
-Creator.TextColor3 = Color3.fromRGB(200, 200, 200)
-Creator.TextSize = 12
-Creator.BackgroundTransparency = 1
-
--- Status e Barra de Carregamento
-local StatusLabel = Instance.new("TextLabel", MainFrame)
-StatusLabel.Size = UDim2.new(1, -40, 0, 30)
-StatusLabel.Position = UDim2.new(0, 20, 0, 70)
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.TextColor3 = Color3.new(1, 1, 1)
-StatusLabel.Text = "Status: Iniciando Varredura..."
-StatusLabel.Font = Enum.Font.GothamMedium
-
-local BarBack = Instance.new("Frame", MainFrame)
-BarBack.Size = UDim2.new(0, 240, 0, 15)
-BarBack.Position = UDim2.new(0.5, -120, 0, 110)
-BarBack.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-Instance.new("UICorner", BarBack)
-
-local BarFill = Instance.new("Frame", BarBack)
-BarFill.Size = UDim2.new(0, 0, 1, 0)
-BarFill.BackgroundColor3 = Color3.fromRGB(0, 255, 127)
-Instance.new("UICorner", BarFill)
-
--- Botão de Minimizar (Canto Superior Esquerdo)
-local OpenBtn = Instance.new("ImageButton", sg)
-OpenBtn.Size = UDim2.new(0, 50, 0, 50)
-OpenBtn.Position = UDim2.new(0, 10, 0, 10)
-OpenBtn.Image = IMAGE_ID
-OpenBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-Instance.new("UICorner", OpenBtn)
-makeDraggable(OpenBtn)
-
-OpenBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-end)
-
------------------------------------------------------------
--- FUNÇÕES TÉCNICAS
------------------------------------------------------------
-
-local function AnnounceChat(fruitName)
-    local msg = "GG, ez fruit: " .. fruitName
-    -- Tenta enviar no chat (pode variar dependendo da versão do chat do Roblox)
-    pcall(function()
-        ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(msg, "All")
-    end)
-end
-
-local function StoreFruit(fruit)
-    if fruit:IsA("Tool") then
-        player.Character.Humanoid:EquipTool(fruit)
-        task.wait(0.3)
-    end
-    pcall(function()
-        ReplicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", fruit:GetAttribute("OriginalName") or fruit.Name, fruit)
-    end)
-end
-
-local function CreateESP(obj, name)
-    if obj:FindFirstChild("FruitESP") then return end
-    local bg = Instance.new("BillboardGui", obj)
-    bg.Name = "FruitESP"; bg.AlwaysOnTop = true; bg.Size = UDim2.new(0, 200, 0, 50); bg.ExtentsOffset = Vector3.new(0, 3, 0)
-    local lbl = Instance.new("TextLabel", bg)
-    lbl.Size = UDim2.new(1, 0, 1, 0); lbl.BackgroundTransparency = 1; lbl.TextColor3 = Color3.new(0, 1, 0.5); lbl.Font = Enum.Font.GothamBold; lbl.TextSize = 14
-    task.spawn(function()
-        while obj:IsDescendantOf(workspace) do
-            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                local dist = (obj:GetPivot().Position - player.Character.HumanoidRootPart.Position).Magnitude
-                lbl.Text = string.format("%s\n[%.1f m]", name, dist * 0.28)
-            end
-            task.wait(0.2)
-        end
-    end)
-end
-
-local function GetServerFruit()
-    for _, v in ipairs(workspace:GetChildren()) do
-        if (v:IsA("Tool") or v:IsA("Model")) and v.Name:lower():find("fruit") and not v.Name:lower():find("dealer") then
-            return v
-        end
-    end
-    return nil
-end
-
-local function ServerHop()
-    StatusLabel.Text = "Status: Trocando de Servidor..."
-    local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
-    for _, s in pairs(servers.data) do
-        if s.playing < s.maxPlayers and s.id ~= game.JobId then
-            TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id)
-            break
-        end
-    end
-end
-
------------------------------------------------------------
--- LOOP PRINCIPAL (VARREDURA)
------------------------------------------------------------
-
-task.spawn(function()
-    while true do
-        local scanTime = 15
-        local step = 0.1
-        local foundInScan = false
+--     local function CreateGroupAds()
+--         local GroupAds = {}
+--         local ADS = Instance.new("ScreenGui")
+--         local Back = Instance.new("Frame")
+--         local Label = Instance.new("TextLabel")
+--         local UIStroke = Instance.new("UIStroke")
+--         local Close = Instance.new("TextButton")
+--         local UIStroke_1 = Instance.new("UIStroke")
+--         local Inner = Instance.new("Frame")
+--         local UIGridLayout = Instance.new("UIGridLayout")
+--         local UIPadding = Instance.new("UIPadding")
+    
+--         ADS.Name = "ADS"
+--         ADS.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+--         CoreGuiAdd(ADS)
+    
+--         Back.BorderSizePixel = 0
+--         Back.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+--         Back.Size = UDim2.new(0.9, 0, 0.5, 0)
+--         Back.BorderColor3 = Color3.fromRGB(0, 0, 0)
+--         Back.Name = "Back"
+--         Back.Position = UDim2.new(0, 0, 0.62406, 0)
+--         Back.Parent = ADS
+    
+--         Label.TextWrapped = true
+--         Label.BorderSizePixel = 0
+--         Label.TextScaled = true
+--         Label.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
+--         Label.FontFace = Font.new("rbxasset://fonts/families/HighwayGothic.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+--         Label.Position = UDim2.new(0, 0, -0.0666667, 0)
+--         Label.Name = "Label"
+--         Label.TextSize = 14
+--         Label.Size = UDim2.new(1, 0, 0.07, 0)
+--         Label.ZIndex = 2
+--         Label.TextColor3 = Color3.fromRGB(0, 0, 0)
+--         Label.BorderColor3 = Color3.fromRGB(0, 0, 0)
+--         Label.Text = "HOHO ADS (contact discrod.gg/hohohub) (auto close when 60s)"
+--         Label.Parent = Back
+    
+--         UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+--         UIStroke.Parent = Label
+    
+--         Close.TextWrapped = true
+--         Close.ZIndex = 2
+--         Close.BorderSizePixel = 0
+--         Close.TextScaled = true
+--         Close.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+--         Close.Position = UDim2.new(0.961977, 0, -0.0666667, 0)
+--         Close.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+--         Close.Name = "Close"
+--         Close.TextSize = 14
+--         Close.Size = UDim2.new(0.03, 0, 0.1, 0)
+--         Close.TextColor3 = Color3.fromRGB(255, 255, 255)
+--         Close.BorderColor3 = Color3.fromRGB(255, 0, 0)
+--         Close.Text = "X"
+--         Close.Parent = Back
+    
+--         UIStroke_1.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+--         UIStroke_1.Parent = Close
+    
+--         Inner.BorderSizePixel = 0
+--         Inner.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+--         Inner.Size = UDim2.new(1, 0, 0, 0.5)
+--         Inner.BorderColor3 = Color3.fromRGB(0, 0, 0)
+--         Inner.BackgroundTransparency = 1
+--         Inner.Name = "Inner"
+--         Inner.Parent = Back
+    
+--         UIGridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+--         UIGridLayout.CellSize = UDim2.new(0, 250, 0, 250)
+--         UIGridLayout.Parent = Inner
+    
+--         UIPadding.PaddingLeft = UDim.new(0.025, 0)
+--         UIPadding.Parent = Inner
         
-        for i = 0, scanTime, step do
-            local fruit = GetServerFruit()
-            if fruit then
-                foundInScan = true
-                local fruitName = fruit.Name
-                StatusLabel.Text = "Status: " .. fruitName:upper() .. " detectada!"
-                BarFill.BackgroundColor3 = Color3.fromRGB(0, 255, 127)
-                
-                CreateESP(fruit, fruitName)
-                AnnounceChat(fruitName)
-                
-                -- Teleporte e Coleta
-                local part = fruit:FindFirstChildWhichIsA("BasePart") or fruit:FindFirstChild("Handle")
-                if part and player.Character then
-                    player.Character:PivotTo(part.CFrame * CFrame.new(0, 3, 0))
-                    task.wait(0.5)
-                    StoreFruit(fruit)
-                end
-                break
-            end
+--         Close.MouseButton1Click:Connect(function()
+--             game.Debris:AddItem(ADS, 0)
+--         end)
+        
+--         game.Debris:AddItem(ADS, 60)
+        
+--         function GroupAds:CreateAds(Image, Link)
+--             local ImageButton = Instance.new("ImageButton")
+--             ImageButton.Parent = Inner
+--             ImageButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+--             ImageButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
+--             ImageButton.BorderSizePixel = 0
+--             ImageButton.Size = UDim2.new(0, 100, 0, 100)
+--             ImageButton.Image = Image
+--             ImageButton.HoverImage = "http://www.roblox.com/asset/?id=3229099135"
             
-            -- Atualiza Barra de Varredura
-            StatusLabel.Text = "Varrendo Servidor... " .. math.ceil(scanTime - i) .. "s"
-            BarFill.Size = UDim2.new(i / scanTime, 0, 1, 0)
-            task.wait(step)
-        end
+--             ImageButton.MouseButton1Click:Connect(function()
+--                 game:GetService("StarterGui"):SetCore("SendNotification",{
+--                     Title = "HOHO ADS", -- Required
+--                     Text = "Ads copied to your clipboard!",
+--                     Icon = Image
+--                 })
+--                 setclipboard(Link)
+--             end)
+--         end
         
-        if not foundInScan then
-            ServerHop()
-        end
-        task.wait(1)
-    end
-end)
+--         return GroupAds
+--     end
+    
+--     local function GetImage(name, url)
+--         local path = name .. ".png"
+--         if not isfile(path) then
+--             local content = game:HttpGet(url)
+--             writefile(path, content)
+--         end
+--         return getcustomasset(path)
+--     end
+    
+--     -- local GroupADS = CreateGroupAds()
+--     -- GroupADS:CreateAds(GetImage("accbloxnet", "https://i.imgur.com/4fhvSM3.png"), "https://accblox.net/")
+--     -- GroupADS:CreateAds(GetImage("hohodiscord", "https://i.imgur.com/e2fdiZD.png"), "https://discord.gg/hohohub")
+-- end)
 
-StarterGui:SetCore("SendNotification", {
-    Title = "Flow Fruit Finder",
-    Text = "Sistema V3 Carregado!",
-    Icon = IMAGE_ID,
-    Duration = 5
-})
+notify.New("for invalid/no key found try to extend key time/get another key", 30)
+-- notify.New("This is not a bug announce, just a notify for some1 don't know!", 30)
+-- notify.New("If script is not load, try to use VPN or CHANGE EXECUTOR!", 30)
+
+if list[game.GameId] ~= nil then
+	loadstring(list[tonumber(game.GameId)])()
+else
+	notify.New("This game is not supported by hohohub :(", 60)
+	notify.New("Please join discord.gg/hohohub to check what game r supported by us!", 60)
+	notify.New("Running HoHo Universal Script!", 60)
+	if game:GetService("CoreGui"):FindFirstChild("HÐ¾hÐ¾_Ñ€Ð°ssÑhÐµÑk") then
+		game:GetService("CoreGui"):FindFirstChild("HÐ¾hÐ¾_Ñ€Ð°ssÑhÐµÑk"):Destroy()
+	end
+	_G.loadCustomId = "b358ee69695f62450471edf52317559a"
+	loadstring(game:HttpGet("https://raw.githubusercontent.com/acsu123/HOHO_H/main/Loading_UI"))()
+end
+-- if _G["HoHo Hub Auto Bounty V3"] or _G["Fumo Blox Fruit - HoHo Hub Kaitun V3"] then return end
+-- local path = "wait(5);loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/main/ScriptLoad.lua'))()"
+-- if getgenv().Key then
+-- 	path = "getgenv().Key = '"..getgenv().Key.."'\n"..path
+-- end
+-- local queueteleport = syn and syn.queue_on_teleport or queue_on_teleport or fluxus and fluxus.queue_on_teleport
+-- queueteleport(path)
