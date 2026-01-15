@@ -16,7 +16,7 @@ end
 QuickMsg("SISTEMA", "Carregando módulos do Core...")
 task.wait(1)
 -- SUBSTITUA PELO SEU LINK RAW DO CORE
-loadstring(game:HttpGet("https://LINK_DO_SEU_CORE_AQUI.com/raw"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"))()
 
 local Core = getgenv().FlowCore
 local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
