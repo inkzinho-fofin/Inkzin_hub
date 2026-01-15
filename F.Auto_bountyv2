@@ -1,112 +1,53 @@
--- FLOW_BOUNTY - Lógica Principal
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local VIM = game:GetService("VirtualInputManager")
+--// SETTINGS DO FLOW BOUNTY
 
-local LocalPlayer = Players.LocalPlayer
+getgenv().SpamSkill         = false
+getgenv().AutoUseRaceV3     = true
+getgenv().AutoUseRaceV4     = true
+getgenv().SpamSkillOnRaceV4 = true
+getgenv().Invisible         = true
+getgenv().InCombatNoReset   = true
+getgenv().Team              = "Pirates"
+getgenv().TweenSpeed        = 350
 
-local state = {
-    isAutoActive = false,
-    isDodging = false,
-    currentTarget = nil,
-    lastSkillTick = tick(),
+getgenv().Config = {
+    TweenSpeed        = getgenv().TweenSpeed,
+    AttackDistance    = 150,
+    SafeHealth        = .25,
+    AutoSafeMode      = true,
+    TargetPriority    = "LowHealth", -- "LowHealth" ou "Distance"
+    Team              = getgenv().Team,
+
+    SpamSkill         = getgenv().SpamSkill,
+    AutoUseRaceV3     = getgenv().AutoUseRaceV3,
+    AutoUseRaceV4     = getgenv().AutoUseRaceV4,
+    SpamSkillOnRaceV4 = getgenv().SpamSkillOnRaceV4,
+    Invisible         = getgenv().Invisible,
+    InCombatNoReset   = getgenv().InCombatNoReset,
 }
 
-local function CreateNotify(msg)
-    print("[FLOW_BOUNTY]: " .. msg)
-    -- Pode adicionar aqui um sistema de notificação UI
-end
+getgenv().Setting = {
+    ["Melee"] = {["Enable"] = true, ["Delay"] = 2,
+        ["Skills"] = {
+            ["Z"] = {["Enable"] = true, ["HoldTime"] = .3, ["TimeToNextSkill"] = },
+            ["X"] = {["Enable"] = true, ["HoldTime"] = ,   ["TimeToNextSkill"] = },
+            ["C"] = {["Enable"] = true, ["HoldTime"] = .1, ["TimeToNextSkill"] = },
+        },
+    },
+    ["Blox Fruit"] = {["Enable"] = true, ["Delay"] = 1.25,
+        ["Skills"] = {
+            ["Z"] = {["Enable"] = true, ["HoldTime"] = 1,   ["TimeToNextSkill"] = },
+            ["X"] = {["Enable"] = true, ["HoldTime"] = ,   ["TimeToNextSkill"] = },
+            ["C"] = {["Enable"] = true, ["HoldTime"] = ,   ["TimeToNextSkill"] = },
+            ["V"] = {["Enable"] = true, ["HoldTime"] = ,   ["TimeToNextSkill"] = },
+            ["F"] = {["Enable"] = true, ["HoldTime"] = ,   ["TimeToNextSkill"] = },
+        },
+    },
+    ["Sword"] = {["Enable"] = false, ["Delay"] = .7,
+        ["Skills"] = {
+            ["Z"] = {["Enable"] = true, ["HoldTime"] = .3, ["TimeToNextSkill"] = },
+            ["X"] = {["Enable"] = true, ["HoldTime"] = ,   ["TimeToNextSkill"] = },
+        },
+    }
+}
 
-local function FastTween(targetCFrame)
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    
-    local root = char.HumanoidRootPart
-    local dist = (root.Position - targetCFrame.Position).Magnitude
-    local speed = getgenv().TweenSpeed or 350
-    local duration = dist / speed
-
-    if dist > 50 then
-        TweenService:Create(root, TweenInfo.new(duration, Enum.EasingStyle.Linear), {CFrame = targetCFrame}):Play()
-    else
-        root.CFrame = targetCFrame
-    end
-end
-
-local function GetBestTarget()
-    local bestTarget = nil
-    local maxDist = 1500
-
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Humanoid") then
-            local hum = p.Character.Humanoid
-            if hum.Health > 0 and not p.Character:FindFirstChild("ForceField") then
-                local dist = (LocalPlayer.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
-                if dist <= maxDist then
-                    bestTarget = p
-                    maxDist = dist
-                end
-            end
-        end
-    end
-    return bestTarget
-end
-
-local function UseSkill(key, hold)
-    VIM:SendKeyEvent(true, key, false, game)
-    if hold and hold > 0 then task.wait(hold) end
-    VIM:SendKeyEvent(false, key, false, game)
-end
-
-local function ExecuteCombat(target)
-    local char = LocalPlayer.Character
-    if not char or not target.Character then return end
-    
-    if getgenv().Invisible and char:FindFirstChild("LowerTorso") then
-        char.LowerTorso.RootPriority = 127
-    end
-
-    if getgenv().AutoUseRaceV3 then UseSkill("T", 0) end
-
-    for weaponType, data in pairs(getgenv().Setting) do
-        if data.Enable then
-            local tool = LocalPlayer.Backpack:FindFirstChild(weaponType) or char:FindFirstChild(weaponType)
-            if tool then
-                if tool.Parent ~= char then char.Humanoid:EquipTool(tool) end
-                for key, skill in pairs(data.Skills) do
-                    if skill.Enable and (tick() - state.lastSkillTick) > (data.Delay or 0.3) then
-                        task.spawn(function() UseSkill(key, skill.HoldTime) end)
-                        state.lastSkillTick = tick()
-                    end
-                end
-            end
-        end
-    end
-end
-
-RunService.Heartbeat:Connect(function()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    
-    if state.isAutoActive then
-        state.currentTarget = GetBestTarget()
-        if state.currentTarget and state.currentTarget.Character:FindFirstChild("HumanoidRootPart") then
-            local targetRP = state.currentTarget.Character.HumanoidRootPart
-            FastTween(targetRP.CFrame * CFrame.new(0, 0, 3))
-            char.HumanoidRootPart.CFrame = CFrame.lookAt(char.HumanoidRootPart.Position, targetRP.Position)
-            ExecuteCombat(state.currentTarget)
-        end
-    end
-end)
-
-game:GetService("UserInputService").InputBegan:Connect(function(i, p)
-    if not p and i.KeyCode == Enum.KeyCode.Q then
-        state.isAutoActive = not state.isAutoActive
-        CreateNotify(state.isAutoActive and "ATIVADO" or "DESATIVADO")
-    end
-end)
-
-CreateNotify("FLOW_BOUNTY CARREGADO COM SUCESSO.")
-                                   
+loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Auto_flow%20bounty.lua"))()
