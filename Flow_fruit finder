@@ -1,11 +1,11 @@
 --[[
-    FLOW FRUIT FINDER
+    FLOW FRUIT FINDER - V21.2 SAFE TWEEN
     - Criador: Hatsune_inkyt
-    - Sistema Híbrido: Imagem via getgenv + Scanner Avançado
-    - Auto Team: Marines
+    - Movimento: Tween Suave (Velocidade 350) + NoClip para evitar Ban.
+    - Sistema Híbrido: Imagem via getgenv + Scanner Avançado.
 ]]
 
--- Configuração de Imagem via Global Environment (Repositorável)
+-- Configuração de Imagem via Global Environment
 local DEFAULT_IMG = "rbxassetid://135908570815238"
 local UI_IMAGE = getgenv().CustomFruitImg or DEFAULT_IMG
 
@@ -21,6 +21,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
 local player = Players.LocalPlayer
 
@@ -33,7 +35,7 @@ player.Idled:Connect(function()
 end)
 
 -----------------------------------------------------------
--- AUTO JOIN MARINES (REVISADO)
+-- AUTO JOIN MARINES
 -----------------------------------------------------------
 local function JoinTeam()
     local remote = ReplicatedStorage:WaitForChild("CommF_", 15)
@@ -44,12 +46,11 @@ end
 task.spawn(JoinTeam)
 
 -----------------------------------------------------------
--- INTERFACE VISUAL (UNIFICADA & LIMPA)
+-- INTERFACE VISUAL
 -----------------------------------------------------------
 local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
 sg.Name = "FlowFinder_UnifiedUI"
 
--- Botão Abrir/Fechar
 local OpenBtn = Instance.new("ImageButton", sg)
 OpenBtn.Size = UDim2.new(0, 50, 0, 50)
 OpenBtn.Position = UDim2.new(0, 15, 0, 15)
@@ -60,7 +61,6 @@ local btnStroke = Instance.new("UIStroke", OpenBtn)
 btnStroke.Color = THEME_COLOR
 btnStroke.Thickness = 2
 
--- Frame Principal
 local MainFrame = Instance.new("Frame", sg)
 MainFrame.Size = UDim2.new(0, 320, 0, 190)
 MainFrame.Position = UDim2.new(0.5, -160, 0.4, -95)
@@ -86,7 +86,6 @@ MainStroke.Color = THEME_COLOR
 MainStroke.Thickness = 2
 MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
--- Título e Créditos
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 35)
 Title.Text = UI_TITLE
@@ -121,7 +120,6 @@ OpenBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
--- Notificações de Topo
 local function Notify(msg)
     task.spawn(function()
         local n = Instance.new("TextLabel", sg)
@@ -141,7 +139,48 @@ local function Notify(msg)
 end
 
 -----------------------------------------------------------
--- LOGICA DE SCANNER E ESP
+-- LÓGICA DE MOVIMENTO (SAFE TWEEN + NOCLIP)
+-----------------------------------------------------------
+local function SmartMove(targetPivot)
+    local char = player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    
+    local root = char.HumanoidRootPart
+    local dist = (root.Position - targetPivot.Position).Magnitude
+    
+    -- Se estiver perto (menos de 50 studs), teleporte direto é seguro
+    if dist < 50 then
+        root.CFrame = targetPivot
+        return
+    end
+
+    -- Se estiver longe, usar Tween para evitar Kick/Ban
+    local speed = 350
+    local timeInfo = dist / speed
+    local tweenInfo = TweenInfo.new(timeInfo, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+    
+    local tween = TweenService:Create(root, tweenInfo, {CFrame = targetPivot})
+    
+    -- Ativar NoClip durante o voo
+    local noclipConn
+    noclipConn = RunService.Stepped:Connect(function()
+        if player.Character then
+            for _, v in pairs(player.Character:GetDescendants()) do
+                if v:IsA("BasePart") and v.CanCollide then
+                    v.CanCollide = false
+                end
+            end
+        end
+    end)
+    
+    tween:Play()
+    tween.Completed:Wait() -- Espera chegar no destino
+    
+    if noclipConn then noclipConn:Disconnect() end
+end
+
+-----------------------------------------------------------
+-- SCANNER
 -----------------------------------------------------------
 local function CreateESP(object, name)
     if object:FindFirstChild("FruitESP") then return end
@@ -160,10 +199,8 @@ local function CreateESP(object, name)
 end
 
 local function IsAFruit(obj)
-    -- Verifica por nome e por estrutura (Handle) para garantir listagem funcional
     if (obj:IsA("Tool") or obj:IsA("Model")) then
         if obj.Name:lower():find("fruit") or obj:FindFirstChild("Handle") then
-            -- Ignora se estiver com um jogador (Humanoid check)
             if not obj:FindFirstAncestorOfClass("Model") or not obj:FindFirstAncestorOfClass("Model"):FindFirstChild("Humanoid") then
                 return true
             end
@@ -201,7 +238,7 @@ local function ServerHop()
 end
 
 -----------------------------------------------------------
--- LOOP DE EXECUÇÃO
+-- LOOP PRINCIPAL
 -----------------------------------------------------------
 task.spawn(function()
     StatusLabel.Text = "CARREGANDO MAPA (AGUARDE 5S)..."
@@ -216,23 +253,29 @@ task.spawn(function()
                 local fruitName = f.Name
                 CreateESP(f, fruitName)
                 
-                StatusLabel.Text = "COLETANDO: " .. fruitName:upper()
+                StatusLabel.Text = "INDO ATE: " .. fruitName:upper()
                 Notify("FRUTA LOCALIZADA!")
                 
+                -- Usa o movimento inteligente (Tween ou TP curto)
                 if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                    player.Character.HumanoidRootPart.CFrame = f:GetPivot()
+                    SmartMove(f:GetPivot())
                 end
                 
-                task.wait(2) -- Tempo para coleta física
+                task.wait(0.5) -- Pequeno delay ao chegar
                 
                 StatusLabel.Text = "ARMAZENANDO: " .. fruitName:upper()
-                pcall(function()
+                
+                -- Tenta armazenar
+                local successStore = pcall(function()
                     local storeRemote = ReplicatedStorage:FindFirstChild("CommF_", true)
                     if storeRemote then
                         storeRemote:InvokeServer("StoreFruit", fruitName, f)
                     end
                 end)
-                Notify("FRUTA PROCESSADA!")
+                
+                if successStore then
+                    Notify("FRUTA ARMAZENADA!")
+                end
                 task.wait(1)
             end
         else
