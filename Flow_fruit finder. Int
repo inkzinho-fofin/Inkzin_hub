@@ -1,13 +1,14 @@
 --[[
-    FLOW FRUIT FINDER - INTERFACE V22.5
-    - Sistema 100% Modular (Core + Img Loader)
+    FLOW FRUIT FINDER - INTERFACE V22.6
+    - Sistema 100% Modular (Correção de Loadstrings)
     - Criador: Hatsune_inkyt
 ]]
 
+-- Configurações de Cores e Fallback
 local THEME_COLOR = Color3.fromRGB(0, 210, 255)
 local FALLBACK_ID = "rbxassetid://135908570815238"
 
--- 1. Notificações do Sistema
+-- 1. Notificações do Sistema (Com ícone dinâmico)
 local function Notify(title, text)
     pcall(function()
         game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -20,32 +21,17 @@ local function Notify(title, text)
 end
 
 -----------------------------------------------------------
--- CARREGAMENTO E SINCRONIZAÇÃO (LOADSTRINGS)
------------------------------------------------------------
-task.spawn(function()
-    -- Chama o Loader de Imagens
-    pcall(function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Img_finder"))()
-    end)
-    
-    -- Chama o Core de Funções
-    pcall(function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"))()
-    end)
-end)
-
------------------------------------------------------------
--- CONSTRUÇÃO DA UI (ESTRUTURA VAZIA)
+-- CONSTRUÇÃO DA UI (Criada antes para garantir feedback visual)
 -----------------------------------------------------------
 local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
 sg.Name = "FlowFinder_Functional"
 
--- Botão Toggle
+-- Botão Toggle (Abre/Fecha)
 local ToggleBtn = Instance.new("ImageButton", sg)
 ToggleBtn.Size = UDim2.new(0, 55, 0, 55)
 ToggleBtn.Position = UDim2.new(0, 15, 0, 15)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-ToggleBtn.Image = FALLBACK_ID -- ID Padrão apenas para o botão
+ToggleBtn.Image = FALLBACK_ID
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
 Instance.new("UIStroke", ToggleBtn).Color = THEME_COLOR
 
@@ -55,19 +41,20 @@ MainFrame.Size = UDim2.new(0, 320, 0, 190)
 MainFrame.Position = UDim2.new(0.5, -160, 0.4, -95)
 MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 MainFrame.ClipsDescendants = true
+MainFrame.Visible = true -- Começa visível
 Instance.new("UICorner", MainFrame)
 Instance.new("UIStroke", MainFrame).Color = THEME_COLOR
 
--- Imagem de Fundo (Inicia Vazia - Loader preenche via getgenv)
+-- Imagem de Fundo (Monitorada pelo getgenv)
 local BgImg = Instance.new("ImageLabel", MainFrame)
 BgImg.Name = "Background"
 BgImg.Size = UDim2.new(1, 0, 1, 0)
 BgImg.BackgroundTransparency = 1
 BgImg.ImageTransparency = 0.85
 BgImg.ZIndex = 1
-BgImg.Image = "" -- Deixado vazio como solicitado
+BgImg.Image = "" -- Definido pelo loader
 
--- Header (Títulos)
+-- Header
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.Text = "FLOW FRUIT FINDER"
@@ -92,7 +79,7 @@ local StatusLabel = Instance.new("TextLabel", MainFrame)
 StatusLabel.Size = UDim2.new(1, -20, 0, 80)
 StatusLabel.Position = UDim2.new(0, 10, 0.5, 5)
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "AGUARDANDO CONEXÃO..."
+StatusLabel.Text = "INICIANDO CARREGAMENTO..."
 StatusLabel.TextColor3 = Color3.new(1, 1, 1)
 StatusLabel.Font = Enum.Font.GothamBold
 StatusLabel.TextSize = 13
@@ -100,40 +87,64 @@ StatusLabel.TextWrapped = true
 StatusLabel.ZIndex = 3
 
 -----------------------------------------------------------
--- LÓGICA DE CONEXÃO TOTAL (REAL-TIME)
+-- CARREGAMENTO DE MÓDULOS (LOADSTRINGS)
+-----------------------------------------------------------
+local function SafeLoad(name, url)
+    StatusLabel.Text = "CARREGANDO: " .. name:upper()
+    local success, result = pcall(function()
+        local code = game:HttpGet(url)
+        loadstring(code)()
+    end)
+    
+    if not success then
+        warn("Erro ao carregar " .. name .. ": " .. tostring(result))
+        StatusLabel.Text = "ERRO NO MÓDULO: " .. name:upper()
+        return false
+    end
+    return true
+end
+
+task.spawn(function()
+    -- 1. Carrega Imagens
+    SafeLoad("Img Loader", "https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Img_finder")
+    
+    -- 2. Carrega Funções Core
+    SafeLoad("Core Functions", "https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core")
+end)
+
+-----------------------------------------------------------
+-- SINCRONIZAÇÃO E LOOP PRINCIPAL
 -----------------------------------------------------------
 
--- Loop de Monitoramento da Imagem (Img_loader -> Interface)
+-- Sincronizar Imagem em Tempo Real
 task.spawn(function()
     while task.wait(0.5) do
         if getgenv().FlowImageData and BgImg.Image ~= getgenv().FlowImageData then
             BgImg.Image = getgenv().FlowImageData
-            -- Opcional: Tenta pre-carregar para evitar cintilação branca
-            game:GetService("ContentProvider"):PreloadAsync({BgImg})
+            pcall(function() game:GetService("ContentProvider"):PreloadAsync({BgImg}) end)
         end
     end
 end)
 
--- Loop de Controle das Funções (Core -> Interface)
+-- Loop de Operação (Core -> Interface)
 task.spawn(function()
-    -- Espera o Core carregar na memória
+    -- Espera o Core ser registrado no getgenv
     while not getgenv().FlowCore do 
         task.wait(1) 
     end
     
     local Core = getgenv().FlowCore
-    Notify("SISTEMA", "Core e Imagens Sincronizados!")
+    Notify("SISTEMA", "Módulos Conectados!")
 
     while true do
-        StatusLabel.Text = "VARRENDO MAPA..."
         local fruits = Core.Scan()
         
-        if #fruits > 0 then
+        if fruits and #fruits > 0 then
             for _, f in ipairs(fruits) do
                 local fruitName = f.Name:upper()
-                Notify("FRUTA LOCALIZADA", "Alvo: " .. fruitName)
+                Notify("FRUTA ENCONTRADA", fruitName)
                 
-                -- Executa movimento e atualiza o texto da interface simultaneamente
+                -- Callback para atualizar a UI enquanto o boneco se move
                 Core.SmartMove(f:GetPivot(), function(msg)
                     StatusLabel.Text = msg:upper()
                 end)
@@ -143,15 +154,20 @@ task.spawn(function()
                 task.wait(1)
             end
         else
-            StatusLabel.Text = "NENHUM ITEM ENCONTRADO.\nTROCANDO SERVIDOR..."
-            task.wait(5)
-            Core.Hop()
+            StatusLabel.Text = "VARRENDO SERVIDOR..."
+            task.wait(3)
+            -- Se o core tiver a função Hop, ele troca de servidor
+            if Core.Hop then
+                StatusLabel.Text = "TROCANDO SERVIDOR..."
+                task.wait(2)
+                Core.Hop()
+            end
         end
         task.wait(1)
     end
 end)
 
--- Abrir e fechar
+-- Botão Toggle
 ToggleBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
