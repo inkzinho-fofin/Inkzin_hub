@@ -1,56 +1,51 @@
 --[[
-    FLOW FRUIT FINDER - INTERFACE V22.4
-    - Dependência Total: Img_finder + Flow_fruit_core
+    FLOW FRUIT FINDER - INTERFACE V22.5
+    - Sistema 100% Modular (Core + Img Loader)
     - Criador: Hatsune_inkyt
 ]]
 
 local THEME_COLOR = Color3.fromRGB(0, 210, 255)
-local FALLBACK_IMG = "73770110559942"
+local FALLBACK_ID = "rbxassetid://135908570815238"
 
--- Notificação Nativa
-local function Notify(title, text, icon)
+-- 1. Notificações do Sistema
+local function Notify(title, text)
     pcall(function()
         game:GetService("StarterGui"):SetCore("SendNotification", {
             Title = title,
             Text = text,
-            Icon = icon or FALLBACK_IMG,
+            Icon = getgenv().FlowImageData or FALLBACK_ID,
             Duration = 3
         })
     end)
 end
 
 -----------------------------------------------------------
--- CARREGAMENTO DE MÓDULOS EXTERNOS
+-- CARREGAMENTO E SINCRONIZAÇÃO (LOADSTRINGS)
 -----------------------------------------------------------
-local function LoadModules()
-    -- Carrega o localizador de imagens (Img_finder)
+task.spawn(function()
+    -- Chama o Loader de Imagens
     pcall(function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Img_finder"))()
     end)
     
-    -- Carrega o motor principal (Core)
+    -- Chama o Core de Funções
     pcall(function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"))()
     end)
-end
-
-LoadModules()
-
--- Puxa a imagem processada pelo Img_finder
-local FinalBgID = getgenv().FlowImageData or FALLBACK_IMG
+end)
 
 -----------------------------------------------------------
--- CONSTRUÇÃO DA UI
+-- CONSTRUÇÃO DA UI (ESTRUTURA VAZIA)
 -----------------------------------------------------------
 local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
-sg.Name = "FlowFinder_V22"
+sg.Name = "FlowFinder_Functional"
 
--- Botão Toggle (Fixo no ID padrão para estabilidade visual)
+-- Botão Toggle
 local ToggleBtn = Instance.new("ImageButton", sg)
 ToggleBtn.Size = UDim2.new(0, 55, 0, 55)
 ToggleBtn.Position = UDim2.new(0, 15, 0, 15)
-ToggleBtn.Image = FALLBACK_IMG
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ToggleBtn.Image = FALLBACK_ID -- ID Padrão apenas para o botão
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
 Instance.new("UIStroke", ToggleBtn).Color = THEME_COLOR
 
@@ -63,15 +58,16 @@ MainFrame.ClipsDescendants = true
 Instance.new("UICorner", MainFrame)
 Instance.new("UIStroke", MainFrame).Color = THEME_COLOR
 
--- Imagem de Fundo (ID fornecida pelo Img_finder)
+-- Imagem de Fundo (Inicia Vazia - Loader preenche via getgenv)
 local BgImg = Instance.new("ImageLabel", MainFrame)
+BgImg.Name = "Background"
 BgImg.Size = UDim2.new(1, 0, 1, 0)
 BgImg.BackgroundTransparency = 1
 BgImg.ImageTransparency = 0.85
 BgImg.ZIndex = 1
-BgImg.Image = FinalBgID
+BgImg.Image = "" -- Deixado vazio como solicitado
 
--- Cabeçalhos
+-- Header (Títulos)
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.Text = "FLOW FRUIT FINDER"
@@ -91,11 +87,12 @@ Creator.TextSize = 11
 Creator.BackgroundTransparency = 1
 Creator.ZIndex = 3
 
+-- Status Monitor
 local StatusLabel = Instance.new("TextLabel", MainFrame)
 StatusLabel.Size = UDim2.new(1, -20, 0, 80)
 StatusLabel.Position = UDim2.new(0, 10, 0.5, 5)
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "SINCRONIZANDO..."
+StatusLabel.Text = "AGUARDANDO CONEXÃO..."
 StatusLabel.TextColor3 = Color3.new(1, 1, 1)
 StatusLabel.Font = Enum.Font.GothamBold
 StatusLabel.TextSize = 13
@@ -103,41 +100,58 @@ StatusLabel.TextWrapped = true
 StatusLabel.ZIndex = 3
 
 -----------------------------------------------------------
--- LOGICA DE EXECUÇÃO
+-- LÓGICA DE CONEXÃO TOTAL (REAL-TIME)
 -----------------------------------------------------------
 
-ToggleBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
+-- Loop de Monitoramento da Imagem (Img_loader -> Interface)
+task.spawn(function()
+    while task.wait(0.5) do
+        if getgenv().FlowImageData and BgImg.Image ~= getgenv().FlowImageData then
+            BgImg.Image = getgenv().FlowImageData
+            -- Opcional: Tenta pre-carregar para evitar cintilação branca
+            game:GetService("ContentProvider"):PreloadAsync({BgImg})
+        end
+    end
 end)
 
+-- Loop de Controle das Funções (Core -> Interface)
 task.spawn(function()
-    -- Aguarda a presença do FlowCore na memória global
-    local Core = getgenv().FlowCore
-    while not Core do
-        task.wait(0.5)
-        Core = getgenv().FlowCore
+    -- Espera o Core carregar na memória
+    while not getgenv().FlowCore do 
+        task.wait(1) 
     end
-
-    Notify("SISTEMA", "Módulos e Imagem carregados!", FinalBgID)
+    
+    local Core = getgenv().FlowCore
+    Notify("SISTEMA", "Core e Imagens Sincronizados!")
 
     while true do
-        StatusLabel.Text = "BUSCANDO ITENS..."
+        StatusLabel.Text = "VARRENDO MAPA..."
         local fruits = Core.Scan()
         
         if #fruits > 0 then
             for _, f in ipairs(fruits) do
-                Notify("ITEM ENCONTRADO", "Indo para: " .. f.Name:upper(), FinalBgID)
-                Core.SmartMove(f:GetPivot(), function(msg) 
-                    StatusLabel.Text = msg:upper() 
+                local fruitName = f.Name:upper()
+                Notify("FRUTA LOCALIZADA", "Alvo: " .. fruitName)
+                
+                -- Executa movimento e atualiza o texto da interface simultaneamente
+                Core.SmartMove(f:GetPivot(), function(msg)
+                    StatusLabel.Text = msg:upper()
                 end)
+                
+                StatusLabel.Text = "COLETANDO: " .. fruitName
                 Core.Store(f)
-                task.wait(2)
+                task.wait(1)
             end
         else
-            StatusLabel.Text = "NADA NO MAPA. TROCANDO SERVIDOR..."
+            StatusLabel.Text = "NENHUM ITEM ENCONTRADO.\nTROCANDO SERVIDOR..."
             task.wait(5)
             Core.Hop()
         end
         task.wait(1)
     end
+end)
+
+-- Abrir e fechar
+ToggleBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
 end)
