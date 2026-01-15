@@ -1,245 +1,52 @@
---[[
-    FLOW FRUIT FINDER - V22.1 (UPDATED)
-    - Criador: Hatsune_inkyt
-    - Modificações: Sistema de Imagem Dinâmico (Auto-Update via getgenv)
-    - Funções: Safe Tween 350, NoClip, Auto Team, Auto Store, ESP.
-]]
-
--- Impedir múltiplas execuções
-if _G.FruitFinderLoaded then return end
-_G.FruitFinderLoaded = true
-
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local VirtualUser = game:GetService("VirtualUser")
-local player = Players.LocalPlayer
-
--- Configurações Iniciais
-local DEFAULT_IMG = "rbxassetid://135908570815238"
-local THEME_COLOR = Color3.fromRGB(0, 210, 255)
-
------------------------------------------------------------
--- FUNÇÃO DE ATUALIZAÇÃO DE IMAGEM
------------------------------------------------------------
-local function GetUIImg()
-    return getgenv().CustomFruitImg or DEFAULT_IMG
+-- FLOW_INTERFACE.lua
+if not getgenv().FlowCore then 
+    -- Substitua pelo link real do seu script de funções
+    loadstring(game:HttpGet("LINK_DO_CORE_AQUI"))() 
 end
 
------------------------------------------------------------
--- AUTO JOIN MARINES
------------------------------------------------------------
-task.spawn(function()
-    local remote = ReplicatedStorage:WaitForChild("CommF_", 20)
-    while task.wait(1) do
-        if player.Team == nil or player.Team.Name ~= "Marines" then
-            pcall(function()
-                remote:InvokeServer("SetTeam", "Marines")
-            end)
-        else
-            break 
-        end
-    end
-end)
+local Core = getgenv().FlowCore
+local THEME_COLOR = Color3.fromRGB(0, 210, 255)
+local DEFAULT_IMG = "rbxassetid://135908570815238"
 
------------------------------------------------------------
--- INTERFACE VISUAL
------------------------------------------------------------
 local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
-sg.Name = "FlowFinder_V22_Toggle"
-
--- Botão Toggle
 local OpenBtn = Instance.new("ImageButton", sg)
-OpenBtn.Name = "ToggleButton"
 OpenBtn.Size = UDim2.new(0, 50, 0, 50)
 OpenBtn.Position = UDim2.new(0, 15, 0, 15)
-OpenBtn.Image = GetUIImg()
 OpenBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-OpenBtn.BorderSizePixel = 0
 Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
-local btnStroke = Instance.new("UIStroke", OpenBtn)
-btnStroke.Color = THEME_COLOR
-btnStroke.Thickness = 2
 
--- Frame Principal
 local MainFrame = Instance.new("Frame", sg)
-MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 320, 0, 190)
 MainFrame.Position = UDim2.new(0.5, -160, 0.4, -95)
 MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-MainFrame.ClipsDescendants = true
-MainFrame.Visible = true 
 Instance.new("UICorner", MainFrame)
-Instance.new("UIStroke", MainFrame).Color = THEME_COLOR
 
 local BgImg = Instance.new("ImageLabel", MainFrame)
 BgImg.Size = UDim2.new(1, 0, 1, 0)
-BgImg.Image = GetUIImg()
 BgImg.BackgroundTransparency = 1
 BgImg.ImageTransparency = 0.6
-BgImg.ZIndex = 1
 
--- Labels
-local Title = Instance.new("TextLabel", MainFrame)
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Text = "FLOW FRUIT FINDER"
-Title.TextColor3 = Color3.new(1, 1, 1)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 18
-Title.BackgroundTransparency = 1
-Title.ZIndex = 3
-
-local Creator = Instance.new("TextLabel", MainFrame)
-Creator.Size = UDim2.new(1, 0, 0, 20)
-Creator.Position = UDim2.new(0, 0, 0, 28)
-Creator.Text = "by Hatsune_inkyt"
-Creator.TextColor3 = THEME_COLOR
-Creator.Font = Enum.Font.GothamMedium
-Creator.TextSize = 12
-Creator.BackgroundTransparency = 1
-Creator.ZIndex = 3
-
-local StatusLabel = Instance.new("TextLabel", MainFrame)
-StatusLabel.Size = UDim2.new(1, -20, 0, 60)
-StatusLabel.Position = UDim2.new(0, 10, 0.5, 10)
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "INICIANDO..."
-StatusLabel.TextColor3 = Color3.new(1, 1, 1)
-StatusLabel.Font = Enum.Font.GothamBold
-StatusLabel.TextSize = 14
-StatusLabel.ZIndex = 3
-
--- Listener de Imagem (Monitora mudanças no getgenv)
+-- Loop de atualização de imagem via getgenv
 task.spawn(function()
-    while task.wait(1) do
-        local currentId = GetUIImg()
-        if OpenBtn.Image ~= currentId then
-            OpenBtn.Image = currentId
-            BgImg.Image = currentId
+    while task.wait(0.5) do
+        local img = getgenv().CustomFruitImg or DEFAULT_IMG
+        if OpenBtn.Image ~= img then
+            OpenBtn.Image = img
+            BgImg.Image = img
         end
     end
 end)
 
-OpenBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-end)
+-- Lógica de abrir/fechar
+OpenBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
 
-local function Notify(msg, isError)
-    task.spawn(function()
-        local n = Instance.new("TextLabel", sg)
-        n.Size = UDim2.new(0, 280, 0, 35)
-        n.Position = UDim2.new(0.5, -140, 0.15, 0)
-        n.BackgroundColor3 = isError and Color3.fromRGB(150, 0, 0) or Color3.fromRGB(15, 15, 15)
-        n.TextColor3 = Color3.new(1, 1, 1)
-        n.Text = msg:upper()
-        n.Font = Enum.Font.GothamBold
-        n.TextSize = 12
-        Instance.new("UICorner", n)
-        task.wait(3)
-        n:Destroy()
-    end)
-end
-
------------------------------------------------------------
--- LÓGICA TÉCNICA
------------------------------------------------------------
-local function CreateESP(object, name)
-    if object:FindFirstChild("FruitESP") then return end
-    local billboard = Instance.new("BillboardGui", object)
-    billboard.Name = "FruitESP"
-    billboard.AlwaysOnTop = true
-    billboard.Size = UDim2.new(0, 100, 0, 50)
-    local text = Instance.new("TextLabel", billboard)
-    text.Size = UDim2.new(1, 0, 1, 0)
-    text.BackgroundTransparency = 1
-    text.Text = "🍎 " .. name:gsub("Fruit", ""):upper()
-    text.TextColor3 = THEME_COLOR
-    text.Font = Enum.Font.GothamBold
-    text.TextSize = 14
-end
-
-local function SmartMove(targetPivot)
-    local char = player.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    local dist = (root.Position - targetPivot.Position).Magnitude
-    if dist < 50 then root.CFrame = targetPivot return end
-    local tween = TweenService:Create(root, TweenInfo.new(dist/350, Enum.EasingStyle.Linear), {CFrame = targetPivot})
-    local nc = RunService.Stepped:Connect(function()
-        pcall(function()
-            for _, v in pairs(char:GetDescendants()) do
-                if v:IsA("BasePart") then v.CanCollide = false end
-            end
-        end)
-    end)
-    tween:Play()
-    tween.Completed:Wait()
-    nc:Disconnect()
-end
-
-local function ScanForFruits()
-    local found = {}
-    for _, v in ipairs(workspace:GetChildren()) do
-        if (v:IsA("Tool") or v:IsA("Model")) and (v.Name:lower():find("fruit") or v:FindFirstChild("Handle")) then
-            if not v:FindFirstAncestorOfClass("Model") or not v:FindFirstAncestorOfClass("Model"):FindFirstChild("Humanoid") then
-                table.insert(found, v)
-            end
-        end
-    end
-    return found
-end
-
-local function ServerHop()
-    local success, content = pcall(function() 
-        return game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100") 
-    end)
-    if success then
-        local servers = HttpService:JSONDecode(content)
-        for _, s in pairs(servers.data) do
-            if s.playing < s.maxPlayers and s.id ~= game.JobId then
-                TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id, player)
-                break
-            end
-        end
-    end
-end
-
------------------------------------------------------------
--- LOOP PRINCIPAL
------------------------------------------------------------
+-- Exemplo de execução usando o Core
 task.spawn(function()
-    while true do
-        local fruits = ScanForFruits()
+    while task.wait(2) do
+        local fruits = Core.ScanForFruits()
         if #fruits > 0 then
-            for _, f in ipairs(fruits) do
-                local name = f.Name
-                CreateESP(f, name)
-                Notify("FRUTA ENCONTRADA: " .. name)
-                StatusLabel.Text = "COLETANDO: " .. name:upper()
-                SmartMove(f:GetPivot())
-                task.wait(0.5)
-                pcall(function()
-                    local remote = ReplicatedStorage:FindFirstChild("CommF_", true)
-                    if remote then remote:InvokeServer("StoreFruit", name, f) end
-                end)
-                task.wait(1)
-                local check = player.Backpack:FindFirstChild(name) or (player.Character and player.Character:FindFirstChild(name))
-                if check then Notify("ERRO: INVENTÁRIO CHEIO!", true) else Notify("SUCESSO: ARMAZENADA!") end
-            end
-        else
-            StatusLabel.Text = "NADA ENCONTRADO. TROCANDO..."
-            task.wait(3)
-            ServerHop()
+            Core.SmartMove(fruits[1]:GetPivot())
+            Core.Store(fruits[1].Name, fruits[1])
         end
-        task.wait(2)
     end
-end)
-
--- Anti-AFK
-player.Idled:Connect(function()
-    VirtualUser:CaptureController()
-    VirtualUser:ClickButton2(Vector2.new())
 end)
