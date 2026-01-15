@@ -1,147 +1,146 @@
---[[
-    FLOW FRUIT FINDER - INTERFACE V22.9 (FINAL)
-    - Imagem Padrão: 135908570815238
-    - Carregamento Automático de Módulos (Core + Img Finder)
-    - Criador: Hatsune_inkyt
-]]
+-- [[ 1: CONFIGURAÇÕES E GETGENV ]]
+-- Você pode mudar esses valores antes de executar ou via console após executado.
+getgenv().FlowInterface = {
+    BackgroundID = "", -- ID da imagem de fundo
+    IconID = "rbxassetid://135908570815238",       -- ID do botão e ícones de log
+    CoreURL = loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"))()
+}
 
-local THEME_COLOR = Color3.fromRGB(0, 210, 255)
-local DEFAULT_ID = "rbxassetid://135908570815238"
+-- [[ 2: CRIAÇÃO DA INTERFACE VISUAL ]]
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
 
--- 1. Função de Notificação
-local function Notify(title, text)
-    pcall(function()
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = title,
-            Text = text,
-            Icon = getgenv().FlowImageData or DEFAULT_ID,
-            Duration = 3
-        })
-    end)
-end
+-- Limpeza de UI antiga
+if CoreGui:FindFirstChild("FlowSystemUI") then CoreGui.FlowSystemUI:Destroy() end
 
------------------------------------------------------------
--- CHAMADA DOS LOADSTRINGS (Módulos Externos)
------------------------------------------------------------
-local function LoadExternalModules()
-    -- Carrega o Localizador de Imagem (e por consequência a lista.im)
-    task.spawn(function()
-        local success, err = pcall(function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Img_finder"))()
-        end)
-        if not success then warn("Erro ao carregar Img_finder: ", err) end
-    end)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "FlowSystemUI"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
 
-    -- Carrega o Core de Funções
-    task.spawn(function()
-        local success, err = pcall(function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"))()
-        end)
-        if not success then warn("Erro ao carregar Flow_fruit_core: ", err) end
-    end)
-end
-
-LoadExternalModules()
-
------------------------------------------------------------
--- CONSTRUÇÃO DA INTERFACE
------------------------------------------------------------
-local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
-sg.Name = "FlowFinder_V22_9"
-
--- Botão Toggle (Abre/Fecha)
-local ToggleBtn = Instance.new("ImageButton", sg)
-ToggleBtn.Size = UDim2.new(0, 55, 0, 55)
+-- Botão Redondo (Superior Esquerdo)
+local ToggleBtn = Instance.new("ImageButton")
+ToggleBtn.Name = "ToggleButton"
+ToggleBtn.Parent = ScreenGui
 ToggleBtn.Position = UDim2.new(0, 15, 0, 15)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-ToggleBtn.Image = DEFAULT_ID -- Começa com a imagem padrão
-Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
-Instance.new("UIStroke", ToggleBtn).Color = THEME_COLOR
+ToggleBtn.Size = UDim2.new(0, 55, 0, 55)
+ToggleBtn.Image = getgenv().FlowInterface.IconID
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 
--- Janela Principal
-local MainFrame = Instance.new("Frame", sg)
-MainFrame.Size = UDim2.new(0, 320, 0, 190)
-MainFrame.Position = UDim2.new(0.5, -160, 0.4, -95)
-MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+local BtnCorner = Instance.new("UICorner")
+BtnCorner.CornerRadius = UDim.new(1, 0)
+BtnCorner.Parent = ToggleBtn
+
+-- Painel Central
+local MainFrame = Instance.new("ImageLabel")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainFrame.Size = UDim2.new(0, 420, 0, 260)
+MainFrame.Image = getgenv().FlowInterface.BackgroundID
+MainFrame.Visible = false
 MainFrame.ClipsDescendants = true
-Instance.new("UICorner", MainFrame)
-Instance.new("UIStroke", MainFrame).Color = THEME_COLOR
 
--- Imagem de Fundo Dinâmica
-local BgImg = Instance.new("ImageLabel", MainFrame)
-BgImg.Name = "Background"
-BgImg.Size = UDim2.new(1, 0, 1, 0)
-BgImg.BackgroundTransparency = 1
-BgImg.ImageTransparency = 0.85
-BgImg.ZIndex = 1
-BgImg.Image = DEFAULT_ID -- Já inicia com a sua imagem padrão
+local FrameCorner = Instance.new("UICorner")
+FrameCorner.CornerRadius = UDim.new(0, 12)
+FrameCorner.Parent = MainFrame
 
--- Header e Status
-local Title = Instance.new("TextLabel", MainFrame)
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Text = "FLOW FRUIT FINDER"
-Title.TextColor3 = Color3.new(1, 1, 1)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 18
-Title.BackgroundTransparency = 1
-Title.ZIndex = 3
+local Stroke = Instance.new("UIStroke")
+Stroke.Thickness = 2
+Stroke.Color = Color3.new(1, 1, 1)
+Stroke.Parent = MainFrame
 
-local StatusLabel = Instance.new("TextLabel", MainFrame)
-StatusLabel.Size = UDim2.new(1, -30, 0, 70)
-StatusLabel.Position = UDim2.new(0, 15, 0.5, 0)
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "CARREGANDO SISTEMA..."
-StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-StatusLabel.Font = Enum.Font.GothamMedium
-StatusLabel.TextSize = 14
-StatusLabel.TextWrapped = true
-StatusLabel.ZIndex = 3
+-- Scrolling Frame para Logs
+local LogScroll = Instance.new("ScrollingFrame")
+LogScroll.Parent = MainFrame
+LogScroll.Size = UDim2.new(0.9, 0, 0.8, 0)
+LogScroll.Position = UDim2.new(0.05, 0, 0.12, 0)
+LogScroll.BackgroundTransparency = 1
+LogScroll.ScrollBarThickness = 2
+LogScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 
------------------------------------------------------------
--- LÓGICA DE ATUALIZAÇÃO E OPERAÇÃO
------------------------------------------------------------
+local LogLayout = Instance.new("UIListLayout")
+LogLayout.Parent = LogScroll
+LogLayout.Padding = UDim.new(0, 5)
 
--- Monitora a troca de imagem via getgenv
-task.spawn(function()
-    while task.wait(0.5) do
-        if getgenv().FlowImageData and BgImg.Image ~= getgenv().FlowImageData then
-            BgImg.Image = getgenv().FlowImageData
-            ToggleBtn.Image = getgenv().FlowImageData
-        end
-    end
-end)
+-- [[ 3: SISTEMA DE LOGS COM ÍCONE ]]
+local function AddLog(msg)
+    local Entry = Instance.new("Frame")
+    Entry.Size = UDim2.new(1, 0, 0, 25)
+    Entry.BackgroundTransparency = 1
+    Entry.Parent = LogScroll
 
--- Loop de funcionamento (Core + Scan)
-task.spawn(function()
-    -- Espera o Core carregar
-    while not getgenv().FlowCore do task.wait(1) end
-    local Core = getgenv().FlowCore
+    local Icon = Instance.new("ImageLabel")
+    Icon.Size = UDim2.new(0, 20, 0, 20)
+    Icon.Image = getgenv().FlowInterface.IconID
+    Icon.BackgroundTransparency = 1
+    Icon.Parent = Entry
+
+    local Text = Instance.new("TextLabel")
+    Text.Size = UDim2.new(1, -25, 1, 0)
+    Text.Position = UDim2.new(0, 25, 0, 0)
+    Text.Text = msg
+    Text.TextColor3 = Color3.new(1, 1, 1)
+    Text.Font = Enum.Font.Gotham
+    Text.TextSize = 13
+    Text.TextXAlignment = Enum.TextXAlignment.Left
+    Text.BackgroundTransparency = 1
+    Text.Parent = Entry
+
+    LogScroll.CanvasSize = UDim2.new(0, 0, 0, LogLayout.AbsoluteContentSize.Y)
+    LogScroll.CanvasPosition = Vector2.new(0, LogScroll.CanvasSize.Y.Offset)
+end
+
+-- [[ 4: LÓGICA DE EXECUÇÃO (LOADSTRING) ]]
+local function ExecuteCore()
+    AddLog("Executando e esperando entrada no servidor...")
     
-    Notify("CONECTADO", "Sistema Flow carregado com sucesso!")
-
-    while true do
-        StatusLabel.Text = "VARRENDO SERVIDOR..."
-        local fruits = Core.Scan()
-        
-        if fruits and #fruits > 0 then
-            for _, f in ipairs(fruits) do
-                Notify("ITEM ENCONTRADO", "Coletando: " .. f.Name:upper())
-                Core.SmartMove(f:GetPivot(), function(msg)
-                    StatusLabel.Text = msg:upper()
-                end)
-                Core.Store(f)
-                task.wait(1)
-            end
+    local success, content = pcall(game.HttpGet, game, getgenv().FlowInterface.CoreURL)
+    
+    if success then
+        local func, err = loadstring(content)
+        if func then
+            task.spawn(func)
+            AddLog("Core Script carregado com sucesso!")
         else
-            StatusLabel.Text = "NADA ENCONTRADO.\nTROCANDO DE SERVIDOR..."
-            task.wait(5)
-            Core.Hop() -- Chama a troca de servidor do Core
+            AddLog("Erro no loadstring: " .. tostring(err))
         end
-        task.wait(1)
+    else
+        AddLog("Erro ao baixar o script do GitHub.")
     end
-end)
+end
 
--- Toggle Menu
+-- [[ 5: MONITORAMENTO E INTERAÇÃO ]]
 ToggleBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- Loop para observar o status e atualizar imagem via getgenv
+task.spawn(function()
+    local lastTeam = ""
+    ExecuteCore()
+
+    while task.wait(1) do
+        -- Atualiza imagem de fundo dinamicamente se mudar o getgenv
+        if MainFrame.Image ~= getgenv().FlowInterface.BackgroundID then
+            MainFrame.Image = getgenv().FlowInterface.BackgroundID
+        end
+
+        -- Monitorar Entrada no Time Marine
+        if lp.Team and lp.Team.Name == "Marines" and lastTeam ~= "Marines" then
+            AddLog("Time selecionado: Marine (Marinheiro)")
+            lastTeam = "Marines"
+        end
+
+        -- Monitorar Frutas (Exemplo de leitura constante)
+        for _, v in pairs(workspace:GetChildren()) do
+            if v:IsA("Tool") and (v.Name:find("Fruit") or v.Name:find("Fruta")) then
+                AddLog("Fruta detectada: " .. v.Name)
+                AddLog("Armazenando fruta encontrada...")
+                task.wait(2) -- Delay para evitar spam no log
+            end
+        end
+    end
 end)
