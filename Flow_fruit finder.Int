@@ -4,12 +4,16 @@
 local config = getgenv().FlowInterface or {}
 local bgID = config.BackgroundID or "135908570815238"
 local iconID = config.IconID or "rbxassetid://135908570815238"
-local coreURL = config.CoreURL or loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"))()
 
--- Função para garantir formato de imagem
+--library
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Floe_fruit.finder_core"))()
+
+-- Função para garantir formato de imagem rbxassetid
 local function getImg(id)
     id = tostring(id)
-    return id:find("rbxassetid://") and id or "rbxassetid://" .. id
+    if id:find("rbxassetid://") then return id end
+    return "rbxassetid://" .. id
 end
 
 -- 2. Criação da UI
@@ -20,8 +24,9 @@ if CoreGui:FindFirstChild("FlowUI") then CoreGui.FlowUI:Destroy() end
 
 local sg = Instance.new("ScreenGui", CoreGui)
 sg.Name = "FlowUI"
+sg.ResetOnSpawn = false
 
--- Botão de Toggle (Redondo)
+-- Botão de Toggle (Redondo) no canto superior esquerdo
 local btn = Instance.new("ImageButton", sg)
 btn.Size = UDim2.new(0, 55, 0, 55)
 btn.Position = UDim2.new(0, 15, 0, 15)
@@ -30,16 +35,19 @@ btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 btn.BorderSizePixel = 0
 Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
 
--- Painel Principal
+-- Painel Principal Centralizado
 local frame = Instance.new("ImageLabel", sg)
 frame.Size = UDim2.new(0, 420, 0, 260)
-frame.Position = UDim2.new(0.5, -210, 0.5, -130)
+frame.AnchorPoint = Vector2.new(0.5, 0.5)
+frame.Position = UDim2.new(0.5, 0, 0.5, 0)
 frame.Image = getImg(bgID)
 frame.Visible = false
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
-Instance.new("UIStroke", frame).Thickness = 2
+local stroke = Instance.new("UIStroke", frame)
+stroke.Thickness = 2
+stroke.Color = Color3.new(1, 1, 1)
 
--- Área de Logs
+-- Área de Logs (Scrolling)
 local scroll = Instance.new("ScrollingFrame", frame)
 scroll.Size = UDim2.new(0.9, 0, 0.8, 0)
 scroll.Position = UDim2.new(0.05, 0, 0.12, 0)
@@ -50,7 +58,7 @@ scroll.ScrollBarThickness = 2
 local layout = Instance.new("UIListLayout", scroll)
 layout.Padding = UDim.new(0, 5)
 
--- 3. Função de Logs com Ícone
+-- 3. Função de Logs com Ícone ao lado
 local lastLog = ""
 local function addLog(msg)
     if msg == lastLog then return end
@@ -73,7 +81,7 @@ local function addLog(msg)
     txt.Font = Enum.Font.GothamSemibold
     txt.TextSize = 13
     txt.BackgroundTransparency = 1
-    txt.TextXAlignment = "Left"
+    txt.TextXAlignment = Enum.TextXAlignment.Left
 
     scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
     scroll.CanvasPosition = Vector2.new(0, scroll.CanvasSize.Y.Offset)
@@ -84,41 +92,46 @@ btn.MouseButton1Click:Connect(function()
     frame.Visible = not frame.Visible
 end)
 
--- 5. Chamada do Script Core (O Script da Interface chama o Core)
+-- 5. Chamada do Script Core (A Interface executa a Library de funções)
 task.spawn(function()
-    addLog("Buscando script core...")
+    addLog("Iniciando Flow System...")
     local success, content = pcall(game.HttpGet, game, coreURL)
     if success then
-        addLog("Core carregado! Executando...")
-        local func = loadstring(content)
-        if func then task.spawn(func) end
+        addLog("Executando Core Library...")
+        local func, err = loadstring(content)
+        if func then 
+            task.spawn(func)
+            addLog("Core carregado. Aguardando entrada...")
+        else
+            addLog("Erro de sintaxe no Core: " .. tostring(err))
+        end
     else
-        addLog("Erro ao carregar o Core.")
+        addLog("Erro ao baixar a Core Library.")
     end
 end)
 
--- 6. Monitoramento em tempo real
+-- 6. Monitoramento em tempo real (Sem Delay/Spam)
 task.spawn(function()
     local lastTeam = ""
     while task.wait(0.5) do
-        -- Sincronizar Fundo (Getgenv dinâmico)
+        -- Sincronizar Fundo dinamicamente via getgenv
         local currentBG = getgenv().FlowInterface and getgenv().FlowInterface.BackgroundID or bgID
         if frame.Image ~= getImg(currentBG) then
             frame.Image = getImg(currentBG)
         end
 
-        -- Monitorar Marinheiros
+        -- Log: Seleção de Time
         if lp.Team and lp.Team.Name == "Marines" and lastTeam ~= "Marines" then
-            addLog("Time Marine selecionado.")
+            addLog("Time Marinheiro selecionado.")
             lastTeam = "Marines"
         end
 
-        -- Monitorar Frutas
+        -- Log: Detecção de Frutas no Servidor
         for _, v in pairs(workspace:GetChildren()) do
             if v:IsA("Tool") and (v.Name:find("Fruit") or v.Name:find("Fruta")) then
-                addLog("Fruta detectada: " .. v.Name)
-                addLog("Aguardando armazenamento...")
-                task.wait(2)
+                addLog("Fruta encontrada: " .. v.Name)
+                addLog("Solicitando armazenamento...")
+                task.wait(2) 
             end
         end
     end
