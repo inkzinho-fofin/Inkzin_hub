@@ -1,7 +1,7 @@
 -- FLOW_INTERFACE.lua
 if not getgenv().FlowCore then 
     -- Substitua pelo link real do seu script de funções
-    loadstring(game:HttpGet("LINK_DO_CORE_AQUI"))() 
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Floe_fruit.finder_core"))() 
 end
 
 local Core = getgenv().FlowCore
