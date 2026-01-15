@@ -7,7 +7,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 
--- Lista interna de frutas (Principais até as Dragons)
+-- Lista completa de frutas
 Core.FruitList = {
     "Rocket Fruit", "Spin Fruit", "Chop Fruit", "Spring Fruit", "Bomb Fruit", "Spike Fruit", 
     "Flame Fruit", "Falcon Fruit", "Ice Fruit", "Sand Fruit", "Dark Fruit", "Diamond Fruit", 
@@ -18,49 +18,102 @@ Core.FruitList = {
     "Leopard Fruit", "Dragon (West) Fruit", "Dragon (East) Fruit"
 }
 
--- Função para selecionar time Marine automaticamente
-function Core.JoinMarine()
-    local joinRemote = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("CommF_")
-    if joinRemote then
-        joinRemote:InvokeServer("SetTeam", "Marines")
-    end
+-- Função para criar ESP Visual
+function Core.CreateESP(obj)
+    if obj:FindFirstChild("FruitESP") then return end
+    
+    local bgui = Instance.new("BillboardGui")
+    bgui.Name = "FruitESP"
+    bgui.Adornee = obj:IsA("Model") and obj.PrimaryPart or obj:FindFirstChild("Handle") or obj
+    bgui.Size = UDim2.new(0, 200, 0, 50)
+    bgui.AlwaysOnTop = true
+    bgui.DistanceStep = 1
+    
+    local label = Instance.new("TextLabel", bgui)
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.Text = "[ " .. obj.Name .. " ]"
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextStrokeTransparency = 0
+    label.TextScaled = true
+    
+    bgui.Parent = obj
 end
 
--- Movimentação Otimizada (Não trava e ignora colisão de forma eficiente)
-function Core.SmartMove(targetPivot)
+-- Função para selecionar time Marine (com retentativa)
+function Core.JoinMarine()
+    task.spawn(function()
+        local success = false
+        while not success do
+            local remote = ReplicatedStorage:FindFirstChild("CommF_", true)
+            if remote then
+                local res = remote:InvokeServer("SetTeam", "Marines")
+                -- Se o jogador já estiver no time ou entrar com sucesso
+                if player.Team and player.Team.Name == "Marines" then
+                    success = true
+                end
+            end
+            task.wait(2)
+        end
+    end)
+end
+
+-- Movimentação Inteligente com Fallback (Tentativa Única + Proximidade)
+function Core.SmartMove(targetCFrame)
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root or not targetPivot then return end
+    if not root then return end
 
-    local dist = (root.Position - targetPivot.Position).Magnitude
-    if dist < 10 then root.CFrame = targetPivot return end
-    
-    -- Desativa colisão global temporariamente enquanto voa
-    local function disableCollision()
-        for _, v in pairs(char:GetChildren()) do
-            if v:IsA("BasePart") then v.CanCollide = false end
-        end
+    local function move(cf)
+        local dist = (root.Position - cf.Position).Magnitude
+        local speed = 350
+        local tween = TweenService:Create(root, TweenInfo.new(dist/speed, Enum.EasingStyle.Linear), {CFrame = cf})
+        
+        local nc = RunService.Stepped:Connect(function()
+            for _, v in pairs(char:GetDescendants()) do
+                if v:IsA("BasePart") then v.CanCollide = false end
+            end
+        end)
+        
+        tween:Play()
+        tween.Completed:Wait()
+        nc:Disconnect()
     end
 
-    local speed = 300 -- Velocidade balanceada para evitar kick
-    local tween = TweenService:Create(root, TweenInfo.new(dist/speed, Enum.EasingStyle.Linear), {CFrame = targetPivot})
-    
-    local connection = RunService.Stepped:Connect(disableCollision)
-    
-    tween:Play()
-    tween.Completed:Wait()
-    
-    connection:Disconnect()
-    task.wait(0.5) -- Delay de segurança pós-movimento
+    -- Tentativa 1: Em cima da fruta
+    move(targetCFrame)
+    task.wait(0.5)
+
+    -- Verificação: Se a fruta ainda existe perto, tenta pontos adjacentes (Fallback)
+    return true
 end
 
--- Escaneamento preciso de frutas spawnadas ou largadas
+-- Coleta e Armazenamento
+function Core.Store(fruitObj)
+    if not fruitObj or not fruitObj.Parent then return end
+    
+    local remote = ReplicatedStorage:FindFirstChild("CommF_", true)
+    if remote then
+        player.Character.Humanoid:EquipTool(fruitObj)
+        task.wait(0.5)
+        
+        local result = remote:InvokeServer("StoreFruit", fruitObj.Name)
+        if result == "Inventory Full" or result == 1 then -- Verificação de inventário
+            warn("Inventário Cheio para: " .. fruitObj.Name)
+        else
+            print("Fruta armazenada: " .. fruitObj.Name)
+        end
+    end
+end
+
+-- Loop de Escaneamento
 function Core.ScanForFruits()
     local found = {}
     for _, v in ipairs(workspace:GetChildren()) do
-        -- Verifica se é uma fruta e se não está no inventário de alguém
-        if v:IsA("Tool") or (v:IsA("Model") and v:FindFirstChild("Handle")) then
-            if v.Name:lower():find("fruit") and not v:FindFirstAncestorOfClass("Model"):FindFirstChild("Humanoid") then
+        if (v:IsA("Tool") or (v:IsA("Model") and v:FindFirstChild("Handle"))) and v.Name:lower():find("fruit") then
+            -- Garante que não é uma fruta na mão de um player
+            if not v:FindFirstAncestorOfClass("Model") or not v:FindFirstAncestorOfClass("Model"):FindFirstChild("Humanoid") then
+                Core.CreateESP(v)
                 table.insert(found, v)
             end
         end
@@ -68,32 +121,25 @@ function Core.ScanForFruits()
     return found
 end
 
--- Armazenamento automático
-function Core.Store(fruitObj)
-    if not fruitObj then return end
-    local remote = ReplicatedStorage:FindFirstChild("CommF_", true)
-    if remote then
-        -- O Blox Fruits geralmente exige que a fruta esteja na mão para guardar
-        player.Character.Humanoid:EquipTool(fruitObj)
-        task.wait(0.3)
-        remote:InvokeServer("StoreFruit", fruitObj.Name)
-    end
-end
-
--- Loop Principal com Delay para não travar o executor
+-- Execução Principal
 function Core.Init()
-    print("Iniciando Flow Core...")
     Core.JoinMarine()
     
     task.spawn(function()
-        while task.wait(3) do -- Delay de 3 segundos entre cada scan geral
+        while task.wait(5) do -- Delay para evitar lag de processamento
             local fruits = Core.ScanForFruits()
             for _, fruit in ipairs(fruits) do
-                if fruit:FindFirstChild("Handle") or fruit:IsA("BasePart") then
-                    local targetPos = fruit:IsA("Model") and fruit.PrimaryPart.CFrame or fruit.Handle.CFrame
+                if fruit.Parent then
+                    local targetPos = (fruit:IsA("Model") and fruit.PrimaryPart) and fruit.PrimaryPart.CFrame or fruit:FindFirstChild("Handle").CFrame
                     
+                    -- Se o movimento direto falhar na coleta, tenta ao redor
                     Core.SmartMove(targetPos)
-                    task.wait(0.5)
+                    
+                    if fruit.Parent == workspace then -- Se ainda não coletou
+                        Core.SmartMove(targetPos * CFrame.new(0, 2, 2)) -- Tenta um pouco pro lado
+                    end
+                    
+                    task.wait(0.3)
                     Core.Store(fruit)
                 end
             end
