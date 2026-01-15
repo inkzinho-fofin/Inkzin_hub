@@ -1,69 +1,68 @@
-local Interface = {}
+-- flow_fruit_finder.interface
+local interface = {}
 
--- URLs dos outros scripts (Substitua pelos seus links RAW do Github)
-local CORE_URL = "https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Floe_fruit.finder_core"
-local BTN_URL = "https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Lista.%20Im"
+-- CONFIGURAÇÃO DE LINKS (Substitua pelos seus links reais do GitHub Raw)
+local URL_CORE = "https://raw.githubusercontent.com/SEU_USUARIO/REPOS_NAME/main/core.lua"
+local URL_BUTTON = "https://raw.githubusercontent.com/SEU_USUARIO/REPOS_NAME/main/button.lua"
 
-function Interface.Load()
-    -- 1. Carrega os módulos dependentes
-    local core = loadstring(game:HttpGet(CORE_URL))()
-    local btnMod = loadstring(game:HttpGet(BTN_URL))()
+function interface.Init()
+    -- Carregando dependências via Loadstring
+    local core = loadstring(game:HttpGet(URL_CORE))()
+    local button = loadstring(game:HttpGet(URL_BUTTON))()
     
-    -- 2. Cria a UI Principal
-    local MainGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
-    local Frame = Instance.new("Frame", MainGui)
-    Frame.Size = UDim2.new(0, 320, 0, 180)
-    Frame.Position = UDim2.new(0.5, -160, 0.5, -90)
-    Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    Frame.Visible = false
-    Instance.new("UICorner", Frame)
+    -- Criar Interface
+    local gui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+    local main = Instance.new("Frame", gui)
+    main.Size = UDim2.new(0, 300, 0, 150)
+    main.Position = UDim2.new(0.5, -150, 0.5, -75)
+    main.BackgroundColor3 = Color3.fromRGB(30,30,30)
+    main.Visible = false
+    Instance.new("UICorner", main)
+    
+    local title = Instance.new("TextLabel", main)
+    title.Text = "flow_fruit finder | Hatsune_inkyt"
+    title.Size = UDim2.new(1,0,0,30)
+    title.TextColor3 = Color3.new(1,1,1)
+    title.BackgroundTransparency = 1
 
-    local Info = Instance.new("TextLabel", Frame)
-    Info.Size = UDim2.new(1, 0, 0, 40)
-    Info.Text = "flow_fruit finder | Hatsune_inkyt"
-    Info.TextColor3 = Color3.new(1, 1, 1)
-    Info.BackgroundTransparency = 1
+    local logLabel = Instance.new("TextLabel", main)
+    logLabel.Size = UDim2.new(1,0,0,50)
+    logLabel.Position = UDim2.new(0,0,0.4,0)
+    logLabel.Text = "Aguardando..."
+    logLabel.TextColor3 = Color3.new(0,1,1)
+    logLabel.BackgroundTransparency = 1
 
-    local ActionLabel = Instance.new("TextLabel", Frame)
-    ActionLabel.Size = UDim2.new(1, 0, 0, 100)
-    ActionLabel.Position = UDim2.new(0, 0, 0.4, 0)
-    ActionLabel.Text = "Iniciando..."
-    ActionLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
-    ActionLabel.BackgroundTransparency = 1
-
-    -- 3. Configura o Botão (Chamando o repositório botão)
-    btnMod.Init(getgenv().CustomIcon or "135908570815238", function()
-        Frame.Visible = not Frame.Visible
+    -- Botão de Abrir/Fechar
+    button.Create(getgenv().CustomIcon or "135908570815238", function()
+        main.Visible = not main.Visible
     end)
 
-    -- 4. Lógica de Execução do Core
+    -- Logica de Automação
     task.spawn(function()
         task.wait(2)
-        ActionLabel.Text = "Selecionando Time..."
+        logLabel.Text = "Selecionando Marinheiros..."
         game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("SetTeam", "Marines")
         
         while task.wait(3) do
-            ActionLabel.Text = "Varrendo Servidor..."
-            local targetFruit = nil
-            
-            for _, v in ipairs(game.Workspace:GetChildren()) do
-                if v:IsA("Tool") or (v:IsA("Model") and v:FindFirstChild("Handle")) then
-                    targetFruit = v
+            logLabel.Text = "Varrendo Servidor..."
+            local fruit = nil
+            for _, v in pairs(game.Workspace:GetChildren()) do
+                if table.find(core.FruitList, v.Name) or v:FindFirstChild("Fruit") then
+                    fruit = v
                     break
                 end
             end
-
-            if targetFruit then
-                local name = targetFruit.Name
-                ActionLabel.Text = "🍎 Encontrada: " .. name
-                core.SmartTeleport(targetFruit:FindFirstChild("Handle") or targetFruit.PrimaryPart)
+            
+            if fruit then
+                logLabel.Text = "🍎 Encontrada: " .. fruit.Name
+                core.Collect(fruit:FindFirstChild("Handle") or fruit.PrimaryPart)
             else
-                ActionLabel.Text = "Servidor Limpo. Trocando..."
-                task.wait(1)
-                core.HopServer()
+                logLabel.Text = "Nenhuma fruta. Trocando servidor..."
+                task.wait(2)
+                core.Hop()
             end
         end
     end)
 end
 
-return Interface
+return interface
