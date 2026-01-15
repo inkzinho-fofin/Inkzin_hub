@@ -1,99 +1,158 @@
--- FLOW_INTERFACE_V22.lua
-local DEFAULT_IMG = "rbxassetid://135908570815238"
-local UI_IMG = getgenv().CustomFruitImg or DEFAULT_IMG
+--[[
+    FLOW FRUIT FINDER - INTERFACE V22.1
+    - Status: Operacional
+    - Sistema: Monitoramento de Core + Custom Background
+]]
 
--- Função de Mensagem Rápida Roblox
+local DEFAULT_BTN_IMG = "rbxassetid://135908570815238"
+local THEME_COLOR = Color3.fromRGB(0, 210, 255)
+
+-- 1. Notificação de Inicialização
 local function QuickMsg(title, text)
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = title,
         Text = text,
-        Icon = getgenv().CustomFruitImg or DEFAULT_IMG,
+        Icon = DEFAULT_BTN_IMG,
         Duration = 3
     })
 end
 
--- CARREGAR O CORE VIA LOADSTRING
-QuickMsg("SISTEMA", "Carregando módulos do Core...")
-task.wait(1)
--- SUBSTITUA PELO SEU LINK RAW DO CORE
-loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"))()
+QuickMsg("SISTEMA", "Iniciando Interface e carregando Core...")
+
+-----------------------------------------------------------
+-- CARREGAMENTO DO CORE
+-----------------------------------------------------------
+-- Certifique-se de substituir pelo link RAW do seu Core Unificado
+local core_url = "LINK_DO_SEU_CORE_UNIFICADO_AQUI" 
+local success, err = pcall(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"))()
+end)
+
+if not success then
+    warn("Erro ao carregar Core: " .. tostring(err))
+end
 
 local Core = getgenv().FlowCore
-local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
 
--- Design da Interface (Escura)
+-----------------------------------------------------------
+-- CONSTRUÇÃO DA INTERFACE
+-----------------------------------------------------------
+local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
+sg.Name = "FlowFinder_UI"
+
+-- Botão Toggle (Fixo na ID padrão)
+local ToggleBtn = Instance.new("ImageButton", sg)
+ToggleBtn.Size = UDim2.new(0, 55, 0, 55)
+ToggleBtn.Position = UDim2.new(0, 15, 0, 15)
+ToggleBtn.Image = DEFAULT_BTN_IMG
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ToggleBtn.BorderSizePixel = 0
+Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
+local stroke = Instance.new("UIStroke", ToggleBtn)
+stroke.Color = THEME_COLOR
+stroke.Thickness = 2
+
+-- Frame Principal
 local MainFrame = Instance.new("Frame", sg)
 MainFrame.Size = UDim2.new(0, 320, 0, 190)
 MainFrame.Position = UDim2.new(0.5, -160, 0.4, -95)
 MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
 Instance.new("UICorner", MainFrame)
+local mainStroke = Instance.new("UIStroke", MainFrame)
+mainStroke.Color = THEME_COLOR
 
+-- Imagem de Fundo (Editável via getgenv)
 local BgImg = Instance.new("ImageLabel", MainFrame)
 BgImg.Size = UDim2.new(1, 0, 1, 0)
-BgImg.Image = UI_IMG
-BgImg.ImageTransparency = 0.85 -- Bem escuro para leitura
 BgImg.BackgroundTransparency = 1
+BgImg.ImageTransparency = 0.85 -- Escurecido para leitura
 BgImg.ZIndex = 1
+BgImg.Image = getgenv().CustomFruitImg or DEFAULT_BTN_IMG
 
+-- Header (Títulos)
+local Title = Instance.new("TextLabel", MainFrame)
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Text = "FLOW FRUIT FINDER"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 16
+Title.BackgroundTransparency = 1
+Title.ZIndex = 3
+
+local Creator = Instance.new("TextLabel", MainFrame)
+Creator.Size = UDim2.new(1, 0, 0, 20)
+Creator.Position = UDim2.new(0, 0, 0, 22)
+Creator.Text = "by Hatsune_inkyt"
+Creator.TextColor3 = THEME_COLOR
+Creator.Font = Enum.Font.GothamMedium
+Creator.TextSize = 11
+Creator.BackgroundTransparency = 1
+Creator.ZIndex = 3
+
+-- Status Monitor
 local StatusLabel = Instance.new("TextLabel", MainFrame)
-StatusLabel.Size = UDim2.new(1, 0, 1, 0)
+StatusLabel.Size = UDim2.new(1, -20, 0, 80)
+StatusLabel.Position = UDim2.new(0, 10, 0.5, 5)
 StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "AGUARDANDO CORE..."
 StatusLabel.TextColor3 = Color3.new(1, 1, 1)
-StatusLabel.Text = "AGUARDANDO..."
 StatusLabel.Font = Enum.Font.GothamBold
-StatusLabel.TextSize = 14
-StatusLabel.ZIndex = 2
+StatusLabel.TextSize = 13
+StatusLabel.TextWrapped = true
+StatusLabel.ZIndex = 3
 
--- Botão Toggle
-local Toggle = Instance.new("ImageButton", sg)
-Toggle.Size = UDim2.new(0, 50, 0, 50)
-Toggle.Position = UDim2.new(0, 15, 0, 15)
-Toggle.Image = UI_IMG
-Toggle.BackgroundColor3 = Color3.new(0,0,0)
-Instance.new("UICorner", Toggle).CornerRadius = UDim.new(1, 0)
-Toggle.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
+-----------------------------------------------------------
+-- LÓGICA DE ATUALIZAÇÃO E EXECUÇÃO
+-----------------------------------------------------------
 
--- Loop de Monitoramento de Imagem
+-- Monitor de Imagem de Fundo (getgenv)
 task.spawn(function()
     while task.wait(1) do
-        local current = getgenv().CustomFruitImg or DEFAULT_IMG
-        if Toggle.Image ~= current then
-            Toggle.Image = current
-            BgImg.Image = current
+        local currentId = getgenv().CustomFruitImg or DEFAULT_BTN_IMG
+        if BgImg.Image ~= currentId then
+            BgImg.Image = currentId
         end
     end
 end)
 
--- LOOP DE EXECUÇÃO E ACOMPANHAMENTO
+-- Toggle Menu
+ToggleBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- Loop de Operação (Interage com o Core)
 task.spawn(function()
+    if not Core then 
+        StatusLabel.Text = "ERRO: CORE NÃO ENCONTRADO!"
+        return 
+    end
+
     while true do
-        StatusLabel.Text = "VARRENDO MUNDO..."
+        StatusLabel.Text = "PROCURANDO FRUTAS..."
         local fruits = Core.Scan()
         
         if #fruits > 0 then
             for _, f in ipairs(fruits) do
-                local fruitName = f.Name:upper()
-                QuickMsg("FRUTA ENCONTRADA", "Localizada: " .. fruitName)
+                local name = f.Name:upper()
+                QuickMsg("FRUTA DETECTADA", "Indo para: " .. name)
                 
-                Core.SmartMove(f:GetPivot(), function(msg, isCritical)
-                    StatusLabel.Text = msg
-                    if isCritical then QuickMsg("MOVIMENTAÇÃO", msg) end
+                Core.SmartMove(f:GetPivot(), function(msg, isUrgent)
+                    StatusLabel.Text = msg:upper()
+                    if isUrgent then QuickMsg("ALERTA", msg) end
                 end)
                 
-                -- Coleta e Armazenamento
-                StatusLabel.Text = "COLETANDO..."
-                task.wait(0.5)
-                pcall(function()
-                    game:GetService("ReplicatedStorage"):FindFirstChild("CommF_", true):InvokeServer("StoreFruit", f.Name, f)
-                end)
-                QuickMsg("SUCESSO", fruitName .. " armazenada!")
-                task.wait(1)
+                StatusLabel.Text = "ARMAZENANDO " .. name .. "..."
+                Core.Store(f)
+                QuickMsg("SUCESSO", name .. " foi guardada!")
+                task.wait(2)
             end
         else
-            StatusLabel.Text = "NENHUMA FRUTA. TROCANDO..."
-            QuickMsg("AVISO", "Servidor vazio. Trocando em 3s...")
+            StatusLabel.Text = "NENHUMA FRUTA NO MAPA.\nTROCANDO DE SERVIDOR EM 3S..."
             task.wait(3)
-            -- Lógica de Server Hop
+            Core.Hop()
         end
+        task.wait(1)
     end
 end)
