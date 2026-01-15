@@ -1,0 +1,143 @@
+--[[
+    FLOW FRUIT FINDER - CORE UNIFIED V22.1
+    - Funções: Safe Tween (350), Hibrid TP, Auto Store, Server Hop, ESP, Scan.
+    - Suporte: Dragon (Old) e Dragon (East).
+]]
+
+local Core = {}
+
+-- Serviços
+local Players = game:GetService("Players")
+local RS = game:GetService("ReplicatedStorage")
+local TS = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+
+local player = Players.LocalPlayer
+
+-- Configurações
+Core.Speed = 350
+Core.FruitList = {
+    "Rocket", "Spin", "Blade", "Spring", "Bomb", "Smoke", "Spike", "Flame", "Falcon", "Ice", "Sand", "Dark", "Diamond", "Light", "Rubber", "Barrier", "Ghost", "Magma", "Quake", "Buddha", "Love", "Spider", "Sound", "Phoenix", "Portal", "Rumble", "Pain", "Blizzard", "Gravity", "Mammoth", "T-Rex", "Dough", "Shadow", "Venom", "Control", "Spirit", "Dragon", "Dragon (East)", "Leopard", "Kitsune"
+}
+
+-- 1. Sistema de ESP (Marcador Visual)
+function Core.CreateESP(obj, name)
+    if obj:FindFirstChild("FlowESP") then return end
+    local bg = Instance.new("BillboardGui", obj)
+    bg.Name = "FlowESP"
+    bg.AlwaysOnTop = true
+    bg.Size = UDim2.new(0, 100, 0, 50)
+    bg.ExtentsOffset = Vector3.new(0, 3, 0)
+    
+    local txt = Instance.new("TextLabel", bg)
+    txt.Size = UDim2.new(1, 0, 1, 0)
+    txt.BackgroundTransparency = 1
+    txt.Text = "🍎 " .. name:upper()
+    txt.TextColor3 = Color3.fromRGB(0, 210, 255)
+    txt.Font = Enum.Font.GothamBold
+    txt.TextSize = 14
+end
+
+-- 2. Varredura Global (Scan)
+function Core.Scan()
+    local found = {}
+    for _, v in ipairs(workspace:GetChildren()) do
+        -- Verifica se é ferramenta ou modelo e se contém "Fruit" no nome
+        if (v:IsA("Tool") or v:IsA("Model")) and (v.Name:lower():find("fruit") or v:FindFirstChild("Handle")) then
+            -- Garante que não está no inventário de alguém
+            if not v:FindFirstAncestorOfClass("Model") or not v:FindFirstAncestorOfClass("Model"):FindFirstChild("Humanoid") then
+                table.insert(found, v)
+                Core.CreateESP(v, v.Name)
+            end
+        end
+    end
+    return found
+end
+
+-- 3. Movimentação Híbrida (TP + Tween)
+function Core.SmartMove(targetCFrame, onStatus)
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    local targetPos = targetCFrame.Position
+    local distance = (root.Position - targetPos).Magnitude
+
+    -- TP Seguro se estiver em outra ilha (Distância > 1500)
+    if distance > 1500 then
+        onStatus("TP Longa Distância...", true)
+        root.CFrame = targetCFrame + Vector3.new(0, 300, 0)
+        task.wait(0.5)
+        distance = (root.Position - targetPos).Magnitude -- Atualiza distância
+    end
+
+    -- Inicia Tween de aproximação (Velocidade 350)
+    onStatus("Tween até a fruta...", false)
+    local duration = distance / Core.Speed
+    local tween = TS:Create(root, TweenInfo.new(duration, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
+    
+    -- NoClip durante o percurso
+    local nc = RunService.Stepped:Connect(function()
+        pcall(function()
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then part.CanCollide = false end
+            end
+        end)
+    end)
+
+    tween:Play()
+    tween.Completed:Wait()
+    nc:Disconnect()
+end
+
+-- 4. Armazenamento Automático
+function Core.Store(fruitObj)
+    pcall(function()
+        local name = fruitObj.Name
+        -- Equipar
+        if fruitObj:IsA("Tool") then
+            player.Character.Humanoid:EquipTool(fruitObj)
+        end
+        task.wait(0.5)
+        -- Chamar Remote do Jogo
+        local remote = RS:FindFirstChild("CommF_", true)
+        if remote then
+            remote:InvokeServer("StoreFruit", name, fruitObj)
+        end
+    end)
+end
+
+-- 5. Sistema de Server Hop (Troca de Servidor)
+function Core.Hop()
+    local success, content = pcall(function()
+        return game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")
+    end)
+    
+    if success then
+        local servers = HttpService:JSONDecode(content).data
+        for _, s in pairs(servers) do
+            if s.playing < s.maxPlayers and s.id ~= game.JobId then
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id, player)
+                break
+            end
+        end
+    end
+end
+
+-- 6. Auto Marine Join
+task.spawn(function()
+    local remote = RS:WaitForChild("CommF_", 20)
+    while task.wait(1) do
+        if player.Team == nil or player.Team.Name ~= "Marines" then
+            pcall(function() remote:InvokeServer("SetTeam", "Marines") end)
+        else
+            break 
+        end
+    end
+end)
+
+getgenv().FlowCore = Core
+return Core
+           
