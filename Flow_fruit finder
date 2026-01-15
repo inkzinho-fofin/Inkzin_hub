@@ -1,14 +1,9 @@
 --[[
-    FLOW FRUIT FINDER - V22.1
+    FLOW FRUIT FINDER - V22.1 (UPDATED)
     - Criador: Hatsune_inkyt
-    - Restaurado: Botão Toggle no canto superior esquerdo.
-    - Funções: Safe Tween 350, NoClip, Auto Team Background, Auto Store, ESP.
+    - Modificações: Sistema de Imagem Dinâmico (Auto-Update via getgenv)
+    - Funções: Safe Tween 350, NoClip, Auto Team, Auto Store, ESP.
 ]]
-
--- Configuração de Imagem (Editável via getgenv().CustomFruitImg)
-local DEFAULT_IMG = "rbxassetid://135908570815238"
-local UI_IMAGE = getgenv().CustomFruitImg or DEFAULT_IMG
-local THEME_COLOR = Color3.fromRGB(0, 210, 255)
 
 -- Impedir múltiplas execuções
 if _G.FruitFinderLoaded then return end
@@ -23,8 +18,19 @@ local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
 local player = Players.LocalPlayer
 
+-- Configurações Iniciais
+local DEFAULT_IMG = "rbxassetid://135908570815238"
+local THEME_COLOR = Color3.fromRGB(0, 210, 255)
+
 -----------------------------------------------------------
--- AUTO JOIN MARINES (BACKGROUND)
+-- FUNÇÃO DE ATUALIZAÇÃO DE IMAGEM
+-----------------------------------------------------------
+local function GetUIImg()
+    return getgenv().CustomFruitImg or DEFAULT_IMG
+end
+
+-----------------------------------------------------------
+-- AUTO JOIN MARINES
 -----------------------------------------------------------
 task.spawn(function()
     local remote = ReplicatedStorage:WaitForChild("CommF_", 20)
@@ -45,12 +51,12 @@ end)
 local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
 sg.Name = "FlowFinder_V22_Toggle"
 
--- Botão para Abrir/Fechar (Canto Superior Esquerdo)
+-- Botão Toggle
 local OpenBtn = Instance.new("ImageButton", sg)
 OpenBtn.Name = "ToggleButton"
 OpenBtn.Size = UDim2.new(0, 50, 0, 50)
-OpenBtn.Position = UDim2.new(0, 15, 0, 15) -- Posição original restaurada
-OpenBtn.Image = UI_IMAGE
+OpenBtn.Position = UDim2.new(0, 15, 0, 15)
+OpenBtn.Image = GetUIImg()
 OpenBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 OpenBtn.BorderSizePixel = 0
 Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
@@ -71,12 +77,12 @@ Instance.new("UIStroke", MainFrame).Color = THEME_COLOR
 
 local BgImg = Instance.new("ImageLabel", MainFrame)
 BgImg.Size = UDim2.new(1, 0, 1, 0)
-BgImg.Image = UI_IMAGE
+BgImg.Image = GetUIImg()
 BgImg.BackgroundTransparency = 1
 BgImg.ImageTransparency = 0.6
 BgImg.ZIndex = 1
 
--- Título e Criador
+-- Labels
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 35)
 Title.Text = "FLOW FRUIT FINDER"
@@ -106,7 +112,17 @@ StatusLabel.Font = Enum.Font.GothamBold
 StatusLabel.TextSize = 14
 StatusLabel.ZIndex = 3
 
--- Lógica do Botão (Abrir/Fechar)
+-- Listener de Imagem (Monitora mudanças no getgenv)
+task.spawn(function()
+    while task.wait(1) do
+        local currentId = GetUIImg()
+        if OpenBtn.Image ~= currentId then
+            OpenBtn.Image = currentId
+            BgImg.Image = currentId
+        end
+    end
+end)
+
 OpenBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
