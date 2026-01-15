@@ -1,8 +1,8 @@
 --[[
-    FLOW FRUIT FINDER - V21.3 STABLE
+    FLOW FRUIT FINDER - V21.4 LOGIC FIX
     - Criador: Hatsune_inkyt
-    - Correções: Auto Team (Loop), Sync de Mensagens e Check de Inventário.
-    - Movimento: Tween 350 + NoClip.
+    - Correção Crítica: Interface só carrega APÓS entrar nos Marines.
+    - Check de Inventário e Mensagens Sincronizadas.
 ]]
 
 -- Configuração de Imagem via Global Environment
@@ -27,6 +27,37 @@ local VirtualUser = game:GetService("VirtualUser")
 local player = Players.LocalPlayer
 
 -----------------------------------------------------------
+-- 1. BLOQUEIO DE SEGURANÇA: ENTRADA NO TIME
+-- O script para tudo aqui até garantir que você é Marine
+-----------------------------------------------------------
+local function EnsureMarines()
+    local remote = ReplicatedStorage:WaitForChild("CommF_", 20)
+    if not remote then return end
+    
+    -- Loop Infinito até o time ser Marines
+    while not (player.Team and player.Team.Name == "Marines") do
+        pcall(function()
+            -- Tenta selecionar o time
+            remote:InvokeServer("SetTeam", "Marines")
+        end)
+        
+        -- Se o PlayerGui não carregou, espera
+        if not player:FindFirstChild("PlayerGui") then
+            task.wait(1)
+        end
+        
+        task.wait(0.5) -- Tenta a cada meio segundo
+    end
+end
+
+-- EXECUTAR O BLOQUEIO ANTES DE TUDO
+EnsureMarines()
+
+-- Aguarda o personagem carregar totalmente após a troca de time
+if not player.Character then player.CharacterAdded:Wait() end
+task.wait(1) -- Delay de segurança pós-spawn
+
+-----------------------------------------------------------
 -- SISTEMA ANTI-AFK
 -----------------------------------------------------------
 player.Idled:Connect(function()
@@ -35,23 +66,7 @@ player.Idled:Connect(function()
 end)
 
 -----------------------------------------------------------
--- AUTO JOIN MARINES (CORRIGIDO COM LOOP)
------------------------------------------------------------
-task.spawn(function()
-    local remote = ReplicatedStorage:WaitForChild("CommF_", 20)
-    if not remote then return end
-    
-    -- Tenta entrar no time até conseguir
-    while player.Team == nil or player.Team.Name ~= "Marines" do
-        pcall(function()
-            remote:InvokeServer("SetTeam", "Marines")
-        end)
-        task.wait(1) -- Tenta a cada 1 segundo se falhar
-    end
-end)
-
------------------------------------------------------------
--- INTERFACE VISUAL
+-- INTERFACE VISUAL (SÓ CARREGA AGORA)
 -----------------------------------------------------------
 local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
 sg.Name = "FlowFinder_UnifiedUI"
@@ -114,7 +129,7 @@ local StatusLabel = Instance.new("TextLabel", MainFrame)
 StatusLabel.Size = UDim2.new(1, -20, 0, 60)
 StatusLabel.Position = UDim2.new(0, 10, 0.5, 0)
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "INICIANDO..."
+StatusLabel.Text = "SISTEMA INICIADO..."
 StatusLabel.TextColor3 = Color3.new(1, 1, 1)
 StatusLabel.Font = Enum.Font.GothamMedium
 StatusLabel.TextSize = 14
@@ -144,7 +159,7 @@ local function Notify(msg, isError)
 end
 
 -----------------------------------------------------------
--- LÓGICA DE MOVIMENTO (SAFE TWEEN + NOCLIP)
+-- LÓGICA DE MOVIMENTO
 -----------------------------------------------------------
 local function SmartMove(targetPivot)
     local char = player.Character
@@ -240,10 +255,10 @@ local function ServerHop()
 end
 
 -----------------------------------------------------------
--- LOOP PRINCIPAL (SEQUENCIAL PARA EVITAR ERROS)
+-- LOOP PRINCIPAL
 -----------------------------------------------------------
 task.spawn(function()
-    StatusLabel.Text = "AGUARDANDO MAPA (5S)..."
+    StatusLabel.Text = "CARREGANDO MAPA (AGUARDE 5S)..."
     task.wait(5)
     
     while true do
@@ -255,43 +270,37 @@ task.spawn(function()
                 local fruitName = f.Name
                 CreateESP(f, fruitName)
                 
-                -- 1. Notifica que achou e começa a ir
+                -- 1. Notificar
                 Notify("FRUTA LOCALIZADA: " .. fruitName:gsub("Fruit",""), false)
                 StatusLabel.Text = "INDO ATE: " .. fruitName:upper()
                 
+                -- 2. Ir até a fruta
                 if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                     SmartMove(f:GetPivot())
                 end
+                task.wait(0.5)
                 
-                -- 2. Chegou na fruta
-                task.wait(0.5) 
-                
-                -- 3. Tenta armazenar
+                -- 3. Tentar armazenar
                 StatusLabel.Text = "TENTANDO ARMAZENAR..."
-                local stored = false
-                
                 pcall(function()
                     local storeRemote = ReplicatedStorage:FindFirstChild("CommF_", true)
                     if storeRemote then
-                        -- Tenta guardar a fruta
                         storeRemote:InvokeServer("StoreFruit", fruitName, f)
                     end
                 end)
                 
-                task.wait(1) -- Delay para o servidor processar
+                task.wait(1) -- Delay crítico
                 
-                -- 4. Verificação Real: Se a fruta ainda estiver no inventário/char, falhou
+                -- 4. Verificar se funcionou
                 local checkBackpack = player.Backpack:FindFirstChild(fruitName)
                 local checkCharacter = player.Character:FindFirstChild(fruitName)
                 
                 if checkBackpack or checkCharacter then
-                    -- Falhou (Provavelmente inventário cheio)
                     Notify("ERRO: INVENTÁRIO CHEIO!", true)
-                    StatusLabel.Text = "INVENTÁRIO CHEIO."
+                    StatusLabel.Text = "FALHA: INVENTÁRIO CHEIO"
                 else
-                    -- Sucesso (Fruta sumiu do inventário)
                     Notify("FRUTA ARMAZENADA!", false)
-                    StatusLabel.Text = "ARMAZENADA COM SUCESSO."
+                    StatusLabel.Text = "ARMAZENADA COM SUCESSO"
                 end
                 
                 task.wait(1.5)
