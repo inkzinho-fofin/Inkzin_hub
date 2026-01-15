@@ -106,10 +106,10 @@ end
 
 task.spawn(function()
     -- 1. Carrega Imagens
-    SafeLoad("Img Loader", "https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Img_finder")
+     loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Img_finder"))()
     
     -- 2. Carrega Funções Core
-    SafeLoad("Core Functions", "https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core")
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"))()
 end)
 
 -----------------------------------------------------------
