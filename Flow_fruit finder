@@ -1,80 +1,41 @@
 --[[
-    FLOW FRUIT FINDER - INTERFACE V22.1
-    - Correção: Sistema de ID de Imagem e Sincronização getgenv
+    FLOW FRUIT FINDER - INTERFACE V22.2
+    - Sistema de Sincronização de Imagem por ID Numérica ou Link
 ]]
 
--- Função para garantir que a ID esteja no formato rbxassetid
-local function FormatImg(id)
-    local numericId = tostring(id):match("%d+")
-    return "rbxassetid://" .. (numericId or "135908570815238")
-end
-
-local DEFAULT_BTN_IMG = FormatImg(135908570815238)
-local THEME_COLOR = Color3.fromRGB(0, 210, 255)
-
--- Notificação de Inicialização
-local function QuickMsg(title, text)
-    pcall(function()
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = title,
-            Text = text,
-            Icon = DEFAULT_BTN_IMG,
-            Duration = 3
-        })
-    end)
-end
-
-QuickMsg("SISTEMA", "Iniciando Interface...")
-
------------------------------------------------------------
--- CARREGAMENTO DO CORE
------------------------------------------------------------
-task.spawn(function()
-    if not getgenv().FlowCore then
-        local success, err = pcall(function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"))()
-        end)
-        if not success then warn("Erro ao carregar Core: " .. tostring(err)) end
+local function ValidarID(id)
+    local apenasNumeros = tostring(id):match("%d+")
+    if apenasNumeros then
+        return "rbxassetid://" .. apenasNumeros
     end
-end)
+    return "rbxassetid://135908570815238" -- ID Padrão caso falhe
+end
 
------------------------------------------------------------
--- CONSTRUÇÃO DA INTERFACE
------------------------------------------------------------
+local THEME_COLOR = Color3.fromRGB(0, 210, 255)
+local DEFAULT_ID = ValidarID(135908570815238)
+
+-- Criando a ScreenGui
 local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
 sg.Name = "FlowFinder_UI"
-
--- Botão Toggle (Fixo)
-local ToggleBtn = Instance.new("ImageButton", sg)
-ToggleBtn.Size = UDim2.new(0, 55, 0, 55)
-ToggleBtn.Position = UDim2.new(0, 15, 0, 15)
-ToggleBtn.Image = DEFAULT_BTN_IMG
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
-local stroke = Instance.new("UIStroke", ToggleBtn)
-stroke.Color = THEME_COLOR
-stroke.Thickness = 2
 
 -- Frame Principal
 local MainFrame = Instance.new("Frame", sg)
 MainFrame.Size = UDim2.new(0, 320, 0, 190)
 MainFrame.Position = UDim2.new(0.5, -160, 0.4, -95)
 MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-MainFrame.ClipsDescendants = true
 Instance.new("UICorner", MainFrame)
-local mainStroke = Instance.new("UIStroke", MainFrame)
-mainStroke.Color = THEME_COLOR
+Instance.new("UIStroke", MainFrame).Color = THEME_COLOR
 
--- Imagem de Fundo (Dinâmica)
+-- Imagem de Fundo (A que o getgenv vai mudar)
 local BgImg = Instance.new("ImageLabel", MainFrame)
+BgImg.Name = "DynamicBackground"
 BgImg.Size = UDim2.new(1, 0, 1, 0)
 BgImg.BackgroundTransparency = 1
 BgImg.ImageTransparency = 0.85
 BgImg.ZIndex = 1
--- Define imagem inicial
-BgImg.Image = getgenv().CustomFruitImg and FormatImg(getgenv().CustomFruitImg) or DEFAULT_BTN_IMG
+BgImg.Image = ValidarID(getgenv().CustomFruitImg)
 
--- Header
+-- Títulos
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.Text = "FLOW FRUIT FINDER"
@@ -84,79 +45,57 @@ Title.TextSize = 16
 Title.BackgroundTransparency = 1
 Title.ZIndex = 3
 
-local Creator = Instance.new("TextLabel", MainFrame)
-Creator.Size = UDim2.new(1, 0, 0, 20)
-Creator.Position = UDim2.new(0, 0, 0, 22)
-Creator.Text = "by Hatsune_inkyt"
-Creator.TextColor3 = THEME_COLOR
-Creator.Font = Enum.Font.GothamMedium
-Creator.TextSize = 11
-Creator.BackgroundTransparency = 1
-Creator.ZIndex = 3
-
--- Status Monitor
 local StatusLabel = Instance.new("TextLabel", MainFrame)
 StatusLabel.Size = UDim2.new(1, -20, 0, 80)
 StatusLabel.Position = UDim2.new(0, 10, 0.5, 5)
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "CARREGANDO MÓDULOS..."
+StatusLabel.Text = "AGUARDANDO COMANDO..."
 StatusLabel.TextColor3 = Color3.new(1, 1, 1)
 StatusLabel.Font = Enum.Font.GothamBold
-StatusLabel.TextSize = 13
-StatusLabel.TextWrapped = true
 StatusLabel.ZIndex = 3
 
 -----------------------------------------------------------
--- LÓGICA DE SINCRONIZAÇÃO
+-- SISTEMA DE CONEXÃO GETGENV (REAL-TIME)
 -----------------------------------------------------------
-
--- Loop que força a atualização da imagem se o getgenv mudar
 task.spawn(function()
-    while task.wait(0.5) do
-        local targetImg = getgenv().CustomFruitImg and FormatImg(getgenv().CustomFruitImg) or DEFAULT_BTN_IMG
-        if BgImg.Image ~= targetImg then
-            BgImg.Image = targetImg
-        end
-    end
-end)
-
-ToggleBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-end)
-
--- Loop de Operação
-task.spawn(function()
-    -- Aguarda o Core carregar
-    local Core = getgenv().FlowCore
-    while not Core do
-        task.wait(1)
-        Core = getgenv().FlowCore
-    end
-
-    while true do
-        StatusLabel.Text = "PROCURANDO FRUTAS..."
-        local fruits = Core.Scan()
+    local ultimaID = nil
+    while task.wait(0.2) do -- Verificação rápida (5 vezes por segundo)
+        local idAtual = getgenv().CustomFruitImg
         
-        if #fruits > 0 then
-            for _, f in ipairs(fruits) do
-                local name = f.Name:upper()
-                QuickMsg("FRUTA DETECTADA", "Alvo: " .. name)
-                
-                Core.SmartMove(f:GetPivot(), function(msg, isUrgent)
-                    StatusLabel.Text = msg:upper()
-                    if isUrgent then QuickMsg("ALERTA", msg) end
-                end)
-                
-                StatusLabel.Text = "ARMAZENANDO..."
-                Core.Store(f)
-                QuickMsg("SUCESSO", name .. " guardada!")
-                task.wait(2)
-            end
-        else
-            StatusLabel.Text = "NENHUMA FRUTA ENCONTRADA.\nSERVIDOR HOP EM BREVE..."
-            task.wait(5)
-            Core.Hop()
+        -- Se a ID no getgenv mudar, atualiza a interface na hora
+        if idAtual ~= ultimaID then
+            local novaImagem = ValidarID(idAtual)
+            BgImg.Image = novaImagem
+            ultimaID = idAtual
+            
+            -- Log de depuração no console do F9
+            print("[FLOW] Imagem atualizada para: " .. novaImagem)
         end
-        task.wait(1)
+    end
+end)
+
+-----------------------------------------------------------
+-- CARREGAMENTO DO CORE (MODULAR)
+-----------------------------------------------------------
+task.spawn(function()
+    local core_url = "https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"
+    local success, err = pcall(function()
+        loadstring(game:HttpGet(core_url))()
+    end)
+    
+    local Core = getgenv().FlowCore
+    if Core then
+        -- Inicia o loop de busca usando as funções do Core
+        while true do
+            local frutas = Core.Scan()
+            if #frutas > 0 then
+                StatusLabel.Text = "FRUTA ENCONTRADA!"
+                Core.SmartMove(frutas[1]:GetPivot(), function(m) StatusLabel.Text = m end)
+                Core.Store(frutas[1])
+            else
+                StatusLabel.Text = "PROCURANDO FRUTAS..."
+            end
+            task.wait(1)
+        end
     end
 end)
