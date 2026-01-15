@@ -1,38 +1,42 @@
 --[[
     FLOW FRUIT FINDER - INTERFACE V22.1
-    - Status: Operacional
-    - Sistema: Monitoramento de Core + Custom Background
+    - Correção: Sistema de ID de Imagem e Sincronização getgenv
 ]]
 
-local DEFAULT_BTN_IMG = "rbxassetid://135908570815238"
-local THEME_COLOR = Color3.fromRGB(0, 210, 255)
-
--- 1. Notificação de Inicialização
-local function QuickMsg(title, text)
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = title,
-        Text = text,
-        Icon = DEFAULT_BTN_IMG,
-        Duration = 3
-    })
+-- Função para garantir que a ID esteja no formato rbxassetid
+local function FormatImg(id)
+    local numericId = tostring(id):match("%d+")
+    return "rbxassetid://" .. (numericId or "135908570815238")
 end
 
-QuickMsg("SISTEMA", "Iniciando Interface e carregando Core...")
+local DEFAULT_BTN_IMG = FormatImg(135908570815238)
+local THEME_COLOR = Color3.fromRGB(0, 210, 255)
+
+-- Notificação de Inicialização
+local function QuickMsg(title, text)
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = title,
+            Text = text,
+            Icon = DEFAULT_BTN_IMG,
+            Duration = 3
+        })
+    end)
+end
+
+QuickMsg("SISTEMA", "Iniciando Interface...")
 
 -----------------------------------------------------------
 -- CARREGAMENTO DO CORE
 -----------------------------------------------------------
--- Certifique-se de substituir pelo link RAW do seu Core Unificado
-local core_url = "LINK_DO_SEU_CORE_UNIFICADO_AQUI" 
-local success, err = pcall(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"))()
+task.spawn(function()
+    if not getgenv().FlowCore then
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit_core"))()
+        end)
+        if not success then warn("Erro ao carregar Core: " .. tostring(err)) end
+    end
 end)
-
-if not success then
-    warn("Erro ao carregar Core: " .. tostring(err))
-end
-
-local Core = getgenv().FlowCore
 
 -----------------------------------------------------------
 -- CONSTRUÇÃO DA INTERFACE
@@ -40,13 +44,12 @@ local Core = getgenv().FlowCore
 local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
 sg.Name = "FlowFinder_UI"
 
--- Botão Toggle (Fixo na ID padrão)
+-- Botão Toggle (Fixo)
 local ToggleBtn = Instance.new("ImageButton", sg)
 ToggleBtn.Size = UDim2.new(0, 55, 0, 55)
 ToggleBtn.Position = UDim2.new(0, 15, 0, 15)
 ToggleBtn.Image = DEFAULT_BTN_IMG
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-ToggleBtn.BorderSizePixel = 0
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
 local stroke = Instance.new("UIStroke", ToggleBtn)
 stroke.Color = THEME_COLOR
@@ -57,21 +60,21 @@ local MainFrame = Instance.new("Frame", sg)
 MainFrame.Size = UDim2.new(0, 320, 0, 190)
 MainFrame.Position = UDim2.new(0.5, -160, 0.4, -95)
 MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-MainFrame.BorderSizePixel = 0
 MainFrame.ClipsDescendants = true
 Instance.new("UICorner", MainFrame)
 local mainStroke = Instance.new("UIStroke", MainFrame)
 mainStroke.Color = THEME_COLOR
 
--- Imagem de Fundo (Editável via getgenv)
+-- Imagem de Fundo (Dinâmica)
 local BgImg = Instance.new("ImageLabel", MainFrame)
 BgImg.Size = UDim2.new(1, 0, 1, 0)
 BgImg.BackgroundTransparency = 1
-BgImg.ImageTransparency = 0.85 -- Escurecido para leitura
+BgImg.ImageTransparency = 0.85
 BgImg.ZIndex = 1
-BgImg.Image = getgenv().CustomFruitImg or DEFAULT_BTN_IMG
+-- Define imagem inicial
+BgImg.Image = getgenv().CustomFruitImg and FormatImg(getgenv().CustomFruitImg) or DEFAULT_BTN_IMG
 
--- Header (Títulos)
+-- Header
 local Title = Instance.new("TextLabel", MainFrame)
 Title.Size = UDim2.new(1, 0, 0, 30)
 Title.Text = "FLOW FRUIT FINDER"
@@ -96,7 +99,7 @@ local StatusLabel = Instance.new("TextLabel", MainFrame)
 StatusLabel.Size = UDim2.new(1, -20, 0, 80)
 StatusLabel.Position = UDim2.new(0, 10, 0.5, 5)
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "AGUARDANDO CORE..."
+StatusLabel.Text = "CARREGANDO MÓDULOS..."
 StatusLabel.TextColor3 = Color3.new(1, 1, 1)
 StatusLabel.Font = Enum.Font.GothamBold
 StatusLabel.TextSize = 13
@@ -104,29 +107,30 @@ StatusLabel.TextWrapped = true
 StatusLabel.ZIndex = 3
 
 -----------------------------------------------------------
--- LÓGICA DE ATUALIZAÇÃO E EXECUÇÃO
+-- LÓGICA DE SINCRONIZAÇÃO
 -----------------------------------------------------------
 
--- Monitor de Imagem de Fundo (getgenv)
+-- Loop que força a atualização da imagem se o getgenv mudar
 task.spawn(function()
-    while task.wait(1) do
-        local currentId = getgenv().CustomFruitImg or DEFAULT_BTN_IMG
-        if BgImg.Image ~= currentId then
-            BgImg.Image = currentId
+    while task.wait(0.5) do
+        local targetImg = getgenv().CustomFruitImg and FormatImg(getgenv().CustomFruitImg) or DEFAULT_BTN_IMG
+        if BgImg.Image ~= targetImg then
+            BgImg.Image = targetImg
         end
     end
 end)
 
--- Toggle Menu
 ToggleBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
--- Loop de Operação (Interage com o Core)
+-- Loop de Operação
 task.spawn(function()
-    if not Core then 
-        StatusLabel.Text = "ERRO: CORE NÃO ENCONTRADO!"
-        return 
+    -- Aguarda o Core carregar
+    local Core = getgenv().FlowCore
+    while not Core do
+        task.wait(1)
+        Core = getgenv().FlowCore
     end
 
     while true do
@@ -136,21 +140,21 @@ task.spawn(function()
         if #fruits > 0 then
             for _, f in ipairs(fruits) do
                 local name = f.Name:upper()
-                QuickMsg("FRUTA DETECTADA", "Indo para: " .. name)
+                QuickMsg("FRUTA DETECTADA", "Alvo: " .. name)
                 
                 Core.SmartMove(f:GetPivot(), function(msg, isUrgent)
                     StatusLabel.Text = msg:upper()
                     if isUrgent then QuickMsg("ALERTA", msg) end
                 end)
                 
-                StatusLabel.Text = "ARMAZENANDO " .. name .. "..."
+                StatusLabel.Text = "ARMAZENANDO..."
                 Core.Store(f)
-                QuickMsg("SUCESSO", name .. " foi guardada!")
+                QuickMsg("SUCESSO", name .. " guardada!")
                 task.wait(2)
             end
         else
-            StatusLabel.Text = "NENHUMA FRUTA NO MAPA.\nTROCANDO DE SERVIDOR EM 3S..."
-            task.wait(3)
+            StatusLabel.Text = "NENHUMA FRUTA ENCONTRADA.\nSERVIDOR HOP EM BREVE..."
+            task.wait(5)
             Core.Hop()
         end
         task.wait(1)
