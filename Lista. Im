@@ -1,17 +1,18 @@
-local ButtonModule = {}
+-- flow_fruit_finder.button
+local btn = {}
 
-function ButtonModule.Init(iconId, onClick)
+function btn.Create(icon, callback)
     local sg = Instance.new("ScreenGui", game:GetService("CoreGui"))
-    local btn = Instance.new("ImageButton", sg)
-    btn.Size = UDim2.new(0, 55, 0, 55)
-    btn.Position = UDim2.new(0, 15, 0, 15)
-    btn.Image = "rbxassetid://" .. iconId
-    btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    btn.BackgroundTransparency = 0.3
+    local b = Instance.new("ImageButton", sg)
+    b.Size = UDim2.new(0, 50, 0, 50)
+    b.Position = UDim2.new(0, 10, 0, 10)
+    b.Image = "rbxassetid://" .. icon
+    b.BackgroundColor3 = Color3.new(0,0,0)
+    b.BackgroundTransparency = 0.5
+    Instance.new("UICorner", b).CornerRadius = UDim.new(1,0)
     
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
-    btn.MouseButton1Click:Connect(onClick)
+    b.MouseButton1Click:Connect(callback)
     return sg
 end
 
-return ButtonModule
+return btn
