@@ -1,48 +1,69 @@
--- flow_fruit_finder.interface
 local Interface = {}
 
-function Interface.CreateMain(config)
+-- URLs dos outros scripts (Substitua pelos seus links RAW do Github)
+local CORE_URL = "URL_DO_SEU_GITHUB_CORE"
+local BTN_URL = "URL_DO_SEU_GITHUB_BUTTON"
+
+function Interface.Load()
+    -- 1. Carrega os módulos dependentes
+    local core = loadstring(game:HttpGet(CORE_URL))()
+    local btnMod = loadstring(game:HttpGet(BTN_URL))()
+    
+    -- 2. Cria a UI Principal
     local MainGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
     local Frame = Instance.new("Frame", MainGui)
-    Frame.Size = UDim2.new(0, 300, 0, 200)
-    Frame.Position = UDim2.new(0.5, -150, 0.5, -100)
-    Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Frame.Size = UDim2.new(0, 320, 0, 180)
+    Frame.Position = UDim2.new(0.5, -160, 0.5, -90)
+    Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     Frame.Visible = false
+    Instance.new("UICorner", Frame)
 
-    local Title = Instance.new("TextLabel", Frame)
-    Title.Text = "flow_fruit finder | By Hatsune_inkyt"
-    Title.Size = UDim2.new(1, 0, 0, 30)
-    Title.TextColor3 = Color3.new(1, 1, 1)
+    local Info = Instance.new("TextLabel", Frame)
+    Info.Size = UDim2.new(1, 0, 0, 40)
+    Info.Text = "flow_fruit finder | Hatsune_inkyt"
+    Info.TextColor3 = Color3.new(1, 1, 1)
+    Info.BackgroundTransparency = 1
 
-    local StatusLabel = Instance.new("TextLabel", Frame)
-    StatusLabel.Name = "Status"
-    StatusLabel.Text = "Aguardando..."
-    StatusLabel.Size = UDim2.new(1, 0, 0, 50)
-    StatusLabel.Position = UDim2.new(0, 0, 0.4, 0)
-    StatusLabel.TextColor3 = Color3.new(0, 1, 0)
+    local ActionLabel = Instance.new("TextLabel", Frame)
+    ActionLabel.Size = UDim2.new(1, 0, 0, 100)
+    ActionLabel.Position = UDim2.new(0, 0, 0.4, 0)
+    ActionLabel.Text = "Iniciando..."
+    ActionLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
+    ActionLabel.BackgroundTransparency = 1
 
-    -- Sistema de Logs
-    local LogFrame = Instance.new("Frame", MainGui)
-    LogFrame.Position = UDim2.new(1, -250, 1, -100)
-    LogFrame.Size = UDim2.new(0, 240, 0, 80)
-    LogFrame.BackgroundTransparency = 0.5
+    -- 3. Configura o Botão (Chamando o repositório botão)
+    btnMod.Init(getgenv().CustomIcon or "135908570815238", function()
+        Frame.Visible = not Frame.Visible
+    end)
 
-    local LogIcon = Instance.new("ImageLabel", LogFrame)
-    LogIcon.Size = UDim2.new(0, 30, 0, 30)
-    LogIcon.Position = UDim2.new(1, -35, 0, 5)
-    LogIcon.Image = "rbxassetid://" .. (getgenv().CustomIcon or "135908570815238")
+    -- 4. Lógica de Execução do Core
+    task.spawn(function()
+        task.wait(2)
+        ActionLabel.Text = "Selecionando Time..."
+        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("SetTeam", "Marines")
+        
+        while task.wait(3) do
+            ActionLabel.Text = "Varrendo Servidor..."
+            local targetFruit = nil
+            
+            for _, v in ipairs(game.Workspace:GetChildren()) do
+                if v:IsA("Tool") or (v:IsA("Model") and v:FindFirstChild("Handle")) then
+                    targetFruit = v
+                    break
+                end
+            end
 
-    function Interface.UpdateStatus(msg)
-        StatusLabel.Text = msg
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Flow Fruit Finder",
-            Text = msg,
-            Icon = "rbxassetid://135908570815238",
-            Duration = 5
-        })
-    end
-
-    return MainGui, Frame
+            if targetFruit then
+                local name = targetFruit.Name
+                ActionLabel.Text = "🍎 Encontrada: " .. name
+                core.SmartTeleport(targetFruit:FindFirstChild("Handle") or targetFruit.PrimaryPart)
+            else
+                ActionLabel.Text = "Servidor Limpo. Trocando..."
+                task.wait(1)
+                core.HopServer()
+            end
+        end
+    end)
 end
 
 return Interface
