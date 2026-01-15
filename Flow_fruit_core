@@ -1,167 +1,67 @@
--- FLOW_CORE.lua
-local Core = {}
+-- flow_fruit_finder.core
+local core = {}
 
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local player = Players.LocalPlayer
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
--- Configurações de Delay e Controle
-local LastLog = ""
-local LogDelay = 5 -- Segundos para repetir a mesma mensagem de erro
-
--- Lista interna de frutas
-Core.FruitList = {
-    "Rocket Fruit", "Spin Fruit", "Chop Fruit", "Spring Fruit", "Bomb Fruit", "Spike Fruit", 
-    "Flame Fruit", "Falcon Fruit", "Ice Fruit", "Sand Fruit", "Dark Fruit", "Diamond Fruit", 
-    "Light Fruit", "Rubber Fruit", "Barrier Fruit", "Ghost Fruit", "Magma Fruit", "Quake Fruit", 
-    "Buddha Fruit", "Love Fruit", "Spider Fruit", "Sound Fruit", "Phoenix Fruit", "Portal Fruit", 
-    "Rumble Fruit", "Pain Fruit", "Blizzard Fruit", "Gravity Fruit", "Mammoth Fruit", "T-Rex Fruit", 
-    "Dough Fruit", "Shadow Fruit", "Venom Fruit", "Control Fruit", "Spirit Fruit", "Kitsune Fruit",
-    "Leopard Fruit", "Dragon (West) Fruit", "Dragon (East) Fruit"
+core.Speed = 350
+core.FruitList = {
+    "Rocket", "Spin", "Blade", "Spring", "Bomb", "Smoke", "Spike", "Flame", "Falcon", "Ice", 
+    "Sand", "Dark", "Diamond", "Light", "Rubber", "Barrier", "Ghost", "Magma", "Quake", 
+    "Buddha", "Love", "Spider", "Sound", "Phoenix", "Portal", "Rumble", "Pain", "Blizzard", 
+    "Gravity", "Mammoth", "T-Rex", "Dough", "Shadow", "Venom", "Control", "Spirit", "Leopard", 
+    "Kitsune", "Dragon (Old)", "Dragon (East)"
 }
 
--- Função de Log Anti-Spam
-local function SmartLog(msg)
-    if msg ~= LastLog then
-        print("[FlowCore] " .. msg)
-        LastLog = msg
-        task.delay(LogDelay, function() if LastLog == msg then LastLog = "" end end)
+function core.HopServer()
+    local x = {}
+    for _, v in ipairs(game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")).data) do
+        if v.playing < v.maxPlayers and v.id ~= game.JobId then
+            x[#x + 1] = v.id
+        end
+    end
+    if #x > 0 then
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, x[math.random(1, #x)])
     end
 end
 
--- Função para Selecionar Time Marine com Verificação
-function Core.JoinMarine()
-    SmartLog("Aguardando carregamento do jogador...")
-    repeat task.wait(1) until player:FindFirstChild("DataLoaded") or player.Character
-    
-    task.spawn(function()
-        while true do
-            if player.Team and (player.Team.Name == "Marines" or player.Team.Name == "Marinheiros") then
-                SmartLog("Time Marine confirmado.")
-                break
-            end
-            
-            local remote = ReplicatedStorage:FindFirstChild("CommF_", true)
-            if remote then
-                remote:InvokeServer("SetTeam", "Marines")
-            end
-            task.wait(2)
-        end
-    end)
+function core.TweenCollect(targetCFrame)
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        local dist = (char.HumanoidRootPart.Position - targetCFrame.p).Magnitude
+        local info = TweenInfo.new(dist / core.Speed, Enum.EasingStyle.Linear)
+        local tween = TweenService:Create(char.HumanoidRootPart, info, {CFrame = targetCFrame})
+        tween:Play()
+        return tween
+    end
 end
 
--- Movimentação Otimizada
-function Core.SmartMove(targetCFrame)
-    local char = player.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-
-    local dist = (root.Position - targetCFrame.Position).Magnitude
-    local speed = 300
+function core.SmartTeleport(fruitHandle)
+    local attempts = 0
+    local success = false
     
-    local tween = TweenService:Create(root, TweenInfo.new(dist/speed, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
-    
-    local nc = RunService.Stepped:Connect(function()
-        for _, v in pairs(char:GetDescendants()) do
-            if v:IsA("BasePart") then v.CanCollide = false end
-        end
-    end)
-    
-    tween:Play()
-    tween.Completed:Wait()
-    nc:Disconnect()
-end
-
--- ESP Visual
-function Core.CreateESP(obj)
-    if obj:FindFirstChild("FruitESP") then return end
-    local bgui = Instance.new("BillboardGui", obj)
-    bgui.Name = "FruitESP"
-    bgui.Adornee = obj:IsA("Model") and obj.PrimaryPart or obj:FindFirstChild("Handle")
-    bgui.Size = UDim2.new(0, 200, 0, 50)
-    bgui.AlwaysOnTop = true
-    
-    local label = Instance.new("TextLabel", bgui)
-    label.BackgroundTransparency = 1
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.Text = "🍎 " .. obj.Name
-    label.TextColor3 = Color3.fromRGB(0, 255, 127)
-    label.TextScaled = true
-end
-
--- Armazenamento com Verificação de Tool
-function Core.Store(fruitObj)
-    if not fruitObj or not fruitObj.Parent then return end
-    local remote = ReplicatedStorage:FindFirstChild("CommF_", true)
-    
-    if remote and player.Character:FindFirstChild("Humanoid") then
-        -- Tenta equipar
-        player.Character.Humanoid:EquipTool(fruitObj)
+    while attempts < 3 and not success do
+        LocalPlayer.Character.HumanoidRootPart.CFrame = fruitHandle.CFrame
         task.wait(0.5)
-        
-        -- Verifica se equipou antes de invocar o servidor
-        if fruitObj.Parent == player.Character then
-            local res = remote:InvokeServer("StoreFruit", fruitObj.Name)
-            if res == "Inventory Full" or res == 1 then
-                SmartLog("Inventário Cheio para: " .. fruitObj.Name)
-            else
-                SmartLog("Fruta " .. fruitObj.Name .. " armazenada com sucesso!")
-            end
+        if (LocalPlayer.Character.HumanoidRootPart.Position - fruitHandle.Position).Magnitude < 10 then
+            success = true
         else
-            SmartLog("Falha ao equipar " .. fruitObj.Name .. ", tentando novamente...")
+            attempts = attempts + 1
         end
     end
-end
 
--- Scan de Frutas no Workspace
-function Core.ScanForFruits()
-    local found = {}
-    for _, v in ipairs(workspace:GetChildren()) do
-        if (v:IsA("Tool") or (v:IsA("Model") and v:FindFirstChild("Handle"))) and v.Name:lower():find("fruit") then
-            if not v:FindFirstAncestorOfClass("Model") or not v:FindFirstAncestorOfClass("Model"):FindFirstChild("Humanoid") then
-                Core.CreateESP(v)
-                table.insert(found, v)
-            end
-        end
+    if not success then
+        -- Teleporta perto e usa Tween
+        LocalPlayer.Character.HumanoidRootPart.CFrame = fruitHandle.CFrame * CFrame.new(0, 10, 0)
+        local tw = core.TweenCollect(fruitHandle.CFrame)
+        tw.Completed:Wait()
     end
-    return found
+    
+    -- Armazenar (Simulação de clique/proximidade)
+    firetouchinterest(LocalPlayer.Character.HumanoidRootPart, fruitHandle, 0)
+    firetouchinterest(LocalPlayer.Character.HumanoidRootPart, fruitHandle, 1)
 end
 
--- Inicialização com Check de Team
-function Core.Init()
-    SmartLog("Iniciando Core... Aguarde a entrada no time.")
-    Core.JoinMarine()
-    
-    -- Espera estar no time antes de começar o loop de busca
-    repeat task.wait(1) until player.Team and (player.Team.Name == "Marines" or player.Team.Name == "Marinheiros")
-    
-    task.spawn(function()
-        while task.wait(5) do
-            local fruits = Core.ScanForFruits()
-            if #fruits > 0 then
-                for _, fruit in ipairs(fruits) do
-                    if fruit.Parent == workspace then
-                        local target = (fruit:IsA("Model") and fruit.PrimaryPart) and fruit.PrimaryPart.CFrame or fruit.Handle.CFrame
-                        
-                        -- Tentativa 1
-                        Core.SmartMove(target)
-                        task.wait(0.5)
-                        
-                        -- Tentativa 2 (Aproximação se não coletou)
-                        if fruit.Parent == workspace then
-                            Core.SmartMove(target * CFrame.new(0, 1, 1))
-                        end
-                        
-                        Core.Store(fruit)
-                    end
-                end
-            end
-        end
-    end)
-end
-
-getgenv().FlowCore = Core
-Core.Init()
-return Core
+return core
