@@ -1,58 +1,48 @@
--- FruitCore Module
-local FruitCore = {}
-
-FruitCore.FruitList = {
-    "Rocket", "Spin", "Chop", "Spring", "Bomb", "Smoke", "Spike", "Flame", "Falcon", "Ice", 
-    "Sand", "Dark", "Diamond", "Light", "Rubber", "Barrier", "Ghost", "Magma", "Quake", 
-    "Buddha", "Love", "Spider", "Sound", "Phoenix", "Portal", "Rumble", "Pain", "Blizzard", 
-    "Gravity", "Mammoth", "T-Rex", "Dough", "Shadow", "Venom", "Control", "Spirit", "Dragon", 
-    "Leopard", "Kitsune"
-}
+-- Objeto de retorno do Core
+local Core = {}
 
 -- Serviços
-local TweenService = game:GetService("TweenService")
-local TeleportService = game:GetService("TeleportService")
-local HttpService = game:GetService("HttpService")
+Core.TweenService = game:GetService("TweenService")
+Core.TeleportService = game:GetService("TeleportService")
+Core.Players = game:GetService("Players")
 
--- Função para verificar se é uma fruta válida (Spawnada ou Largada)
-function FruitCore.FindFruits()
-    local found = {}
-    for _, obj in pairs(workspace:GetChildren()) do
-        for _, fruitName in pairs(FruitCore.FruitList) do
-            if obj.Name:find("Fruit") or obj:FindFirstChild("Handle") then
-                if obj.Name:find(fruitName) or (obj:IsA("Tool") and obj.Name:find(fruitName)) then
-                    table.insert(found, obj)
-                end
+-- Lista de Frutas (Simplificada para o exemplo)
+Core.Fruits = {"Rocket", "Spin", "Chop", "Spring", "Bomb", "Smoke", "Spike", "Flame", "Ice", "Sand", "Dark", "Light", "Magma", "Quake", "Buddha", "Love", "Spider", "Sound", "Phoenix", "Portal", "Rumble", "Dough", "Shadow", "Venom", "Control", "Spirit", "Dragon", "Leopard", "Kitsune"}
+
+function Core.CheckForFruits()
+    for _, item in pairs(workspace:GetChildren()) do
+        for _, name in pairs(Core.Fruits) do
+            if item.Name:find(name) and (item:IsA("Tool") or item:IsA("Model")) then
+                return item
             end
         end
     end
-    return found
+    return nil
 end
 
--- Função de Coleta via Tween (Suave para evitar detecção)
-function FruitCore.Collect(target, character)
-    if not target or not character then return end
-    local hrp = character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        local distance = (hrp.Position - target:GetModelCFrame().p).Magnitude
-        local info = TweenInfo.new(distance/50, Enum.EasingStyle.Linear)
-        local tween = TweenService:Create(hrp, info, {CFrame = target:GetModelCFrame()})
-        tween:Play()
-        return tween
+function Core.Collect(target)
+    local char = Core.Players.LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") and target then
+        local hrp = char.HumanoidRootPart
+        local targetPos = target:GetModelCFrame()
+        
+        -- Teleporte Direto para proximidade e Tween para o item
+        hrp.CFrame = targetPos * CFrame.new(0, 2, 0)
+        task.wait(0.1)
+        return true
     end
+    return false
 end
 
--- Função Server Hop
-function FruitCore.ServerHop()
-    local x = {}
-    for _, v in ipairs(HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")).data) do
-        if v.playing < v.maxPlayers and v.id ~= game.JobId then
-            x[#x + 1] = v.id
+function Core.ServerHop()
+    -- Lógica simples de busca de novos servidores
+    local servers = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")).data
+    for _, s in pairs(servers) do
+        if s.playing < s.maxPlayers and s.id ~= game.JobId then
+            Core.TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id)
+            break
         end
     end
-    if #x > 0 then
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, x[math.random(1, #x)])
-    end
 end
 
-return FruitCore
+return Core
