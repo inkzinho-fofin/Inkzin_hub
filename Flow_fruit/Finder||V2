@@ -1,6 +1,6 @@
---[[
-    FLOW FRUIT FINDER - CONTROLADOR DE FLUIDEZ
-    Gerencia a execução, notificações e decisão de Server Hop.
+--[[ 
+    FLOW FRUIT FINDER - CONTROLADOR AVANÇADO
+    Gerencia: Varredura, Aura (ESP), Coleta e Certificação de Hop.
 ]]
 
 local function Load(url)
@@ -14,7 +14,7 @@ local Interface = Load("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_
 
 local IMG_ID = "135908570815238"
 
--- Função de Mensagem Rápida (Pop-up 0.5s com Ícone)
+-- Função de Mensagem Rápida (0.5s com Ícone)
 local function Notify(text)
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Flow Finder",
@@ -28,6 +28,19 @@ local function Notify(text)
     })
 end
 
+-- Função para Criar Aura (Highlight)
+local function ApplyAura(object)
+    if not object:FindFirstChild("FlowAura") then
+        local Highlight = Instance.new("Highlight")
+        Highlight.Name = "FlowAura"
+        Highlight.Parent = object
+        Highlight.FillColor = Color3.fromRGB(0, 255, 150) -- Verde neon
+        Highlight.OutlineColor = Color3.new(1, 1, 1) -- Branco
+        Highlight.FillTransparency = 0.5
+        Highlight.OutlineTransparency = 0
+    end
+end
+
 -- 1. Seleção de Equipe (Marines)
 pcall(function()
     game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CommF_"):InvokeServer("SetTeam", "Marines")
@@ -36,44 +49,61 @@ end)
 -- 2. Inicialização da Interface
 local StatusLine = Interface.Create("Hatsune_inkyt", "flow_fruit finder", IMG_ID)
 
--- 3. Conexão do Observador (Notifica ações do Core)
+-- 3. Conexão do Observador (Notifica as ações do Core)
 if Core and Core.ActionSignal then
     Core.ActionSignal.Event:Connect(function(msg)
         Notify(msg)
     end)
 end
 
--- 4. Loop de Controle e Decisão (Fluxo Fluido)
+-- 4. Loop de Controle e Certificação
 task.spawn(function()
-    Notify("Sincronização Concluída!")
+    Notify("Sincronização Ativa - Iniciando Varredura")
     
     while task.wait(0.5) do
-        StatusLine.Text = "Status: Iniciando varredura..."
+        StatusLine.Text = "Status: Escaneando Servidor..."
         
-        -- Realiza a varredura chamando a função do Core
+        -- Inicia a varredura chamando a função do Core
         local fruit = Core.Scan() 
         
         if fruit then
-            -- Se achar uma fruta, interrompe a decisão de hop e foca na coleta
-            StatusLine.Text = "Alvo: " .. fruit.Name
+            -- 1. Certifica a localização e aplica a Aura
+            StatusLine.Text = "Fruta Localizada: " .. fruit.Name
+            ApplyAura(fruit)
+            Notify("Aura aplicada em: " .. fruit.Name)
+            
+            task.wait(0.3) -- Tempo para o jogador visualizar a aura
+            
+            -- 2. Inicia a Coleta usando o Core
             local collected = Core.Collect(fruit)
             
+            -- 3. Certifica que a fruta foi armazenada (verificando se ela sumiu do mapa)
             if collected then
-                StatusLine.Text = "Coleta finalizada. Re-escaneando..."
-                task.wait(1) -- Pequena pausa para fluidez
+                StatusLine.Text = "Verificando armazenamento..."
+                repeat task.wait(0.2) until not fruit:IsDescendantOf(workspace) or not fruit.Parent
+                
+                StatusLine.Text = "Armazenado com Sucesso!"
+                Notify("Fruta segura no inventário.")
+                task.wait(1)
             end
         else
-            -- Se a varredura terminar e NÃO achar nada
-            StatusLine.Text = "Varredura completa: Nenhuma fruta."
-            Notify("Servidor Limpo. Preparando Hop...")
+            -- Lógica de Certificação de Servidor Limpo para Server Hop
+            StatusLine.Text = "Nenhuma fruta encontrada. Re-certificando..."
             
-            task.wait(2) -- Tempo de segurança para garantir que nada spawnou
+            -- Realiza uma varredura dupla de segurança
+            task.wait(2)
+            local doubleCheck = Core.Scan()
             
-            -- Re-checa uma última vez antes de trocar de servidor
-            if not Core.Scan() then
-                StatusLine.Text = "Trocando de servidor..."
+            if not doubleCheck then
+                StatusLine.Text = "Servidor Certificado: Limpo."
+                Notify("Iniciando Server Hop Seguro...")
+                task.wait(1)
+                
+                -- Executa o Server Hop apenas se o servidor estiver 100% configurado e sem itens
                 Core.ServerHop()
-                break -- Para o loop pois o teleporte será iniciado
+                break -- Encerra loop local para troca de servidor
+            else
+                StatusLine.Text = "Nova fruta detectada durante certificação!"
             end
         end
     end
