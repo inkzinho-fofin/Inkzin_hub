@@ -1,67 +1,60 @@
 local Interface = {}
 
+-- Evento para o LocalScript observar as mudanças de UI
+Interface.UINotify = Instance.new("BindableEvent")
+
 function Interface.Create(creator, scriptName, assetId)
     local player = game.Players.LocalPlayer
     local sg = Instance.new("ScreenGui", player.PlayerGui)
     sg.Name = "FlowFinder_UI"
     sg.ResetOnSpawn = false
 
-    -- Botão Redondo (Superior Esquerdo)
+    -- Botão Superior Esquerdo (Redondo)
     local btn = Instance.new("ImageButton", sg)
     btn.Size = UDim2.new(0, 55, 0, 55)
     btn.Position = UDim2.new(0, 20, 0, 20)
     btn.Image = "rbxassetid://" .. assetId
-    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     btn.BorderSizePixel = 0
     local corner = Instance.new("UICorner", btn)
     corner.CornerRadius = UDim.new(1, 0)
 
-    -- Interface Central
+    -- Painel Central
     local frame = Instance.new("ImageLabel", sg)
     frame.Size = UDim2.new(0, 350, 0, 180)
     frame.Position = UDim2.new(0.5, -175, 0.5, -90)
     frame.Image = "rbxassetid://" .. assetId
     frame.Visible = false
-    frame.ClipsDescendants = true
     
-    local uiStroke = Instance.new("UIStroke", frame)
-    uiStroke.Thickness = 2
-    uiStroke.Color = Color3.fromRGB(0, 255, 150)
+    local stroke = Instance.new("UIStroke", frame)
+    stroke.Thickness = 2
+    stroke.Color = Color3.fromRGB(0, 255, 150)
 
-    -- Header
-    local title = Instance.new("TextLabel", frame)
-    title.Size = UDim2.new(1, 0, 0, 40)
-    title.Text = scriptName .. " | " .. creator
-    title.TextColor3 = Color3.new(1, 1, 1)
-    title.Font = Enum.Font.GothamBold
-    title.BackgroundTransparency = 0.7
-    title.BackgroundColor3 = Color3.new(0, 0, 0)
+    -- Título e Autor
+    local header = Instance.new("TextLabel", frame)
+    header.Size = UDim2.new(1, 0, 0, 40)
+    header.Text = scriptName .. " | " .. creator
+    header.TextColor3 = Color3.new(1, 1, 1)
+    header.BackgroundTransparency = 0.8
+    header.BackgroundColor3 = Color3.new(0,0,0)
+    header.Font = Enum.Font.GothamBold
 
-    -- Status (Linha Única)
+    -- Status Linha Única
     local status = Instance.new("TextLabel", frame)
-    status.Size = UDim2.new(1, 0, 0, 40)
-    status.Position = UDim2.new(0, 0, 0.5, -10)
-    status.Text = "Status: Aguardando Core..."
+    status.Size = UDim2.new(1, 0, 0, 30)
+    status.Position = UDim2.new(0, 0, 0.5, -15)
+    status.Text = "Aguardando..."
     status.TextColor3 = Color3.fromRGB(0, 255, 150)
-    status.Font = Enum.Font.GothamMedium
     status.BackgroundTransparency = 1
+    status.Font = Enum.Font.GothamMedium
 
-    -- Alternar Visibilidade
+    -- Toggle
     btn.MouseButton1Click:Connect(function()
         frame.Visible = not frame.Visible
+        Interface.UINotify:Fire("Menu " .. (frame.Visible and "Aberto" or "Fechado"))
     end)
 
     return status
-end
-
--- Sistema de Mensagens Rápidas do Chat (Canto Inferior Direito)
-function Interface.Notify(text)
-    game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
-        Text = "{Flow Finder}: " .. text,
-        Color = Color3.fromRGB(0, 255, 150),
-        Font = Enum.Font.GothamBold,
-        FontSize = Enum.FontSize.Size18
-    })
 end
 
 return Interface
