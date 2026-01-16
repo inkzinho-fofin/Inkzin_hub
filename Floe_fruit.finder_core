@@ -1,75 +1,18 @@
 local Core = {}
+Core.Event = Instance.new("BindableEvent") -- Evento que o LocalScript vai observar
 
--- Evento para o LocalScript observar as ações
-Core.ActionSignal = Instance.new("BindableEvent")
-
--- Serviços
-local TweenService = game:GetService("TweenService")
-local TeleportService = game:GetService("TeleportService")
-local Players = game:GetService("Players")
-
-Core.Fruits = {
-    "Kitsune", "Dragon", "Leopard", "Spirit", "Control", "Venom", "Shadow", "Dough", 
-    "T-Rex", "Mammoth", "Gravity", "Blizzard", "Pain", "Rumble", "Portal", "Phoenix", 
-    "Sound", "Spider", "Love", "Buddha", "Quake", "Magma", "Ghost", "Barrier", "Rubber", 
-    "Light", "Diamond", "Dark", "Sand", "Ice", "Falcon", "Flame", "Spike", "Smoke", 
-    "Bomb", "Spring", "Chop", "Spin", "Rocket"
-}
-
-function Core.CheckForFruits()
-    for _, obj in pairs(workspace:GetChildren()) do
-        for _, name in pairs(Core.Fruits) do
-            if (obj.Name:find(name) and obj.Name:find("Fruit")) or obj:FindFirstChild(name) then
-                if obj:IsA("Tool") or obj:IsA("Model") or obj:FindFirstChild("Handle") then
-                    return obj
-                end
-            end
-        end
-    end
-    return nil
+function Core.Scan() 
+    -- Coloque aqui sua lógica de encontrar frutas (GetChildren do Workspace)
+    -- Retorne o objeto da fruta ou nil
 end
 
-function Core.Collect(target)
-    if not target then return end
-    local char = Players.LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        -- Avisa o LocalScript que a coleta começou
-        Core.ActionSignal:Fire("Localizado: " .. target.Name .. ". Coletando...")
-        
-        local hrp = char.HumanoidRootPart
-        local targetPos = target:GetModelCFrame()
-
-        -- Movimentação
-        hrp.CFrame = targetPos * CFrame.new(0, 5, 0)
-        task.wait(0.1)
-        
-        local tween = TweenService:Create(hrp, TweenInfo.new(0.4), {CFrame = targetPos})
-        tween:Play()
-        tween.Completed:Wait()
-        
-        Core.ActionSignal:Fire("Sucesso! Fruta Armazenada.")
-        return true
-    end
+function Core.Grab(fruit)
+    Core.Event:Fire("Coletando: " .. fruit.Name)
+    -- Coloque aqui sua lógica de Tween/Teleporte
+    return true
 end
 
-function Core.CanServerHop()
-    return Core.CheckForFruits() == nil
-end
+function Core.ShouldHop() return true end -- Exemplo
+function Core.Hop() -- Lógica de TeleportService end
 
-function Core.ServerHop()
-    Core.ActionSignal:Fire("Procurando novo servidor...")
-    local success, result = pcall(function()
-        return game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")
-    end)
-    if success then
-        local data = game:GetService("HttpService"):JSONDecode(result).data
-        for _, v in pairs(data) do
-            if v.playing < v.maxPlayers and v.id ~= game.JobId then
-                TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id)
-                break
-            end
-        end
-    end
-end
-
-return Core
+return Core -- ISSO É O QUE FAZ O LOCALSCRIPT FUNCIONAR
