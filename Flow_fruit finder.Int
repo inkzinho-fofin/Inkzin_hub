@@ -1,68 +1,52 @@
--- flow_fruit_finder.interface
-local interface = {}
+local Interface = {}
 
--- CONFIGURAÇÃO DE LINKS (Substitua pelos seus links reais do GitHub Raw)
-local URL_CORE = "https://raw.githubusercontent.com/SEU_USUARIO/REPOS_NAME/main/core.lua"
-local URL_BUTTON = "https://raw.githubusercontent.com/SEU_USUARIO/REPOS_NAME/main/button.lua"
+function Interface.Create(creatorName, scriptName, assetId)
+    local player = game.Players.LocalPlayer
+    local sg = Instance.new("ScreenGui", player.PlayerGui)
+    sg.Name = "FlowFinderUI"
 
-function interface.Init()
-    -- Carregando dependências via Loadstring
-    local core = loadstring(game:HttpGet(URL_CORE))()
-    local button = loadstring(game:HttpGet(URL_BUTTON))()
+    -- Botão Alternador
+    local btn = Instance.new("ImageButton", sg)
+    btn.Size = UDim2.new(0, 50, 0, 50)
+    btn.Position = UDim2.new(0, 20, 0, 20)
+    btn.Image = "rbxassetid://" .. assetId
+    btn.BackgroundColor3 = Color3.fromRGB(30,30,30)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
+
+    -- Painel Principal
+    local frame = Instance.new("ImageLabel", sg)
+    frame.Size = UDim2.new(0, 300, 0, 150)
+    frame.Position = UDim2.new(0.5, -150, 0.5, -75)
+    frame.Image = "rbxassetid://" .. assetId
+    frame.Visible = false
     
-    -- Criar Interface
-    local gui = Instance.new("ScreenGui", game:GetService("CoreGui"))
-    local main = Instance.new("Frame", gui)
-    main.Size = UDim2.new(0, 300, 0, 150)
-    main.Position = UDim2.new(0.5, -150, 0.5, -75)
-    main.BackgroundColor3 = Color3.fromRGB(30,30,30)
-    main.Visible = false
-    Instance.new("UICorner", main)
-    
-    local title = Instance.new("TextLabel", main)
-    title.Text = "flow_fruit finder | Hatsune_inkyt"
-    title.Size = UDim2.new(1,0,0,30)
+    local title = Instance.new("TextLabel", frame)
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Text = scriptName .. " | " .. creatorName
     title.TextColor3 = Color3.new(1,1,1)
     title.BackgroundTransparency = 1
 
-    local logLabel = Instance.new("TextLabel", main)
-    logLabel.Size = UDim2.new(1,0,0,50)
-    logLabel.Position = UDim2.new(0,0,0.4,0)
-    logLabel.Text = "Aguardando..."
-    logLabel.TextColor3 = Color3.new(0,1,1)
-    logLabel.BackgroundTransparency = 1
+    local status = Instance.new("TextLabel", frame)
+    status.Name = "StatusLine"
+    status.Size = UDim2.new(1, 0, 0, 30)
+    status.Position = UDim2.new(0, 0, 0.5, -15)
+    status.Text = "Iniciando..."
+    status.TextColor3 = Color3.fromRGB(0, 255, 150)
+    status.BackgroundTransparency = 1
 
-    -- Botão de Abrir/Fechar
-    button.Create(getgenv().CustomIcon or "135908570815238", function()
-        main.Visible = not main.Visible
+    btn.MouseButton1Click:Connect(function()
+        frame.Visible = not frame.Visible
     end)
 
-    -- Logica de Automação
-    task.spawn(function()
-        task.wait(2)
-        logLabel.Text = "Selecionando Marinheiros..."
-        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("SetTeam", "Marines")
-        
-        while task.wait(3) do
-            logLabel.Text = "Varrendo Servidor..."
-            local fruit = nil
-            for _, v in pairs(game.Workspace:GetChildren()) do
-                if table.find(core.FruitList, v.Name) or v:FindFirstChild("Fruit") then
-                    fruit = v
-                    break
-                end
-            end
-            
-            if fruit then
-                logLabel.Text = "🍎 Encontrada: " .. fruit.Name
-                core.Collect(fruit:FindFirstChild("Handle") or fruit.PrimaryPart)
-            else
-                logLabel.Text = "Nenhuma fruta. Trocando servidor..."
-                task.wait(2)
-                core.Hop()
-            end
-        end
-    end)
+    return status
 end
 
-return interface
+function Interface.Notify(text)
+    game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
+        Text = "[Flow Finder]: " .. text,
+        Color = Color3.fromRGB(255, 200, 0),
+        Font = Enum.Font.SourceSansBold
+    })
+end
+
+return Interface
