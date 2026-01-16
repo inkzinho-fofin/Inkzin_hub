@@ -1,0 +1,42 @@
+local FruitCore = {}
+
+-- Serviços Essenciais
+FruitCore.Services = {
+	TweenService = game:GetService("TweenService"),
+	TeleportService = game:GetService("TeleportService"),
+	RunService = game:GetService("RunService"),
+	HttpService = game:GetService("HttpService"),
+	Players = game:GetService("Players")
+}
+
+-- Lista Completa de Frutas (Database)
+FruitCore.FruitList = {
+	"Rocket", "Spin", "Chop", "Spring", "Bomb", "Smoke", "Spike", "Flame", "Falcon", 
+	"Ice", "Sand", "Dark", "Diamond", "Light", "Rubber", "Barrier", "Ghost", "Magma", 
+	"Quake", "Buddha", "Love", "Spider", "Sound", "Phoenix", "Portal", "Rumble", 
+	"Pain", "Blizzard", "Gravity", "Mammoth", "T-Rex", "Dough", "Shadow", "Venom", 
+	"Control", "Spirit", "Dragon", "Leopard", "Kitsune"
+}
+
+-- Função para verificar se um objeto é uma fruta
+function FruitCore.ValidateFruit(object)
+	for _, fruitName in pairs(FruitCore.FruitList) do
+		-- Blox Fruits geralmente usa o padrão "Name Fruit" ou apenas o nome
+		if object.Name:find(fruitName) and (object:IsA("Tool") or object:IsA("Model")) then
+			return true
+		end
+	end
+	return false
+end
+
+-- Sistema de Notificação no Chat
+function FruitCore.Notify(text)
+	game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
+		Text = "{Flow Finder}: " .. text;
+		Color = Color3.fromRGB(255, 255, 255);
+		Font = Enum.Font.SourceSansBold;
+		FontSize = Enum.FontSize.Size18;
+	})
+end
+
+return FruitCore
