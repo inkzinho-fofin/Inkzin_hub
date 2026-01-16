@@ -1,11 +1,13 @@
 local Core = {}
 
+-- Evento para o LocalScript observar as ações
+Core.ActionSignal = Instance.new("BindableEvent")
+
 -- Serviços
 local TweenService = game:GetService("TweenService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 
--- Lista Atualizada 2024/2025
 Core.Fruits = {
     "Kitsune", "Dragon", "Leopard", "Spirit", "Control", "Venom", "Shadow", "Dough", 
     "T-Rex", "Mammoth", "Gravity", "Blizzard", "Pain", "Rumble", "Portal", "Phoenix", 
@@ -14,11 +16,9 @@ Core.Fruits = {
     "Bomb", "Spring", "Chop", "Spin", "Rocket"
 }
 
--- Verifica se há frutas no chão ou spawnadas
 function Core.CheckForFruits()
     for _, obj in pairs(workspace:GetChildren()) do
         for _, name in pairs(Core.Fruits) do
-            -- Checa se o nome contém a fruta ou se é um Tool/Model válido
             if (obj.Name:find(name) and obj.Name:find("Fruit")) or obj:FindFirstChild(name) then
                 if obj:IsA("Tool") or obj:IsA("Model") or obj:FindFirstChild("Handle") then
                     return obj
@@ -29,41 +29,38 @@ function Core.CheckForFruits()
     return nil
 end
 
--- Lógica de Coleta (Tween + Teleporte Seguro)
 function Core.Collect(target)
-    local player = Players.LocalPlayer
-    local char = player.Character
-    if char and char:FindFirstChild("HumanoidRootPart") and target then
+    if not target then return end
+    local char = Players.LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        -- Avisa o LocalScript que a coleta começou
+        Core.ActionSignal:Fire("Localizado: " .. target.Name .. ". Coletando...")
+        
         local hrp = char.HumanoidRootPart
         local targetPos = target:GetModelCFrame()
 
-        -- Teleporte acima para evitar detecção de colisão instantânea
+        -- Movimentação
         hrp.CFrame = targetPos * CFrame.new(0, 5, 0)
-        task.wait(0.2)
+        task.wait(0.1)
         
-        -- Tween suave para tocar na fruta
-        local tween = TweenService:Create(hrp, TweenInfo.new(0.5), {CFrame = targetPos})
+        local tween = TweenService:Create(hrp, TweenInfo.new(0.4), {CFrame = targetPos})
         tween:Play()
         tween.Completed:Wait()
         
+        Core.ActionSignal:Fire("Sucesso! Fruta Armazenada.")
         return true
     end
-    return false
 end
 
--- Verifica se o inventário está cheio (Exemplo de lógica de proteção)
 function Core.CanServerHop()
-    -- Retorna true se não houver frutas no workspace
     return Core.CheckForFruits() == nil
 end
 
--- Salto de Servidor
 function Core.ServerHop()
-    local x = {}
+    Core.ActionSignal:Fire("Procurando novo servidor...")
     local success, result = pcall(function()
         return game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")
     end)
-    
     if success then
         local data = game:GetService("HttpService"):JSONDecode(result).data
         for _, v in pairs(data) do
