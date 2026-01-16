@@ -1,0 +1,80 @@
+--[[
+    FLOW FRUIT FINDER - CONTROLADOR DE FLUIDEZ
+    Gerencia a execução, notificações e decisão de Server Hop.
+]]
+
+local function Load(url)
+    local s, r = pcall(function() return loadstring(game:HttpGet(url))() end)
+    return s and r or nil
+end
+
+-- Carregamento dos Repositórios
+local Core = Load("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Floe_fruit.finder_core")
+local Interface = Load("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit%20finder.Int")
+
+local IMG_ID = "135908570815238"
+
+-- Função de Mensagem Rápida (Pop-up 0.5s com Ícone)
+local function Notify(text)
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Flow Finder",
+        Text = text,
+        Icon = "rbxassetid://" .. IMG_ID,
+        Duration = 0.5
+    })
+    game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
+        Text = "{Flow}: " .. text,
+        Color = Color3.fromRGB(0, 255, 150)
+    })
+end
+
+-- 1. Seleção de Equipe (Marines)
+pcall(function()
+    game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CommF_"):InvokeServer("SetTeam", "Marines")
+end)
+
+-- 2. Inicialização da Interface
+local StatusLine = Interface.Create("Hatsune_inkyt", "flow_fruit finder", IMG_ID)
+
+-- 3. Conexão do Observador (Notifica ações do Core)
+if Core and Core.ActionSignal then
+    Core.ActionSignal.Event:Connect(function(msg)
+        Notify(msg)
+    end)
+end
+
+-- 4. Loop de Controle e Decisão (Fluxo Fluido)
+task.spawn(function()
+    Notify("Sincronização Concluída!")
+    
+    while task.wait(0.5) do
+        StatusLine.Text = "Status: Iniciando varredura..."
+        
+        -- Realiza a varredura chamando a função do Core
+        local fruit = Core.Scan() 
+        
+        if fruit then
+            -- Se achar uma fruta, interrompe a decisão de hop e foca na coleta
+            StatusLine.Text = "Alvo: " .. fruit.Name
+            local collected = Core.Collect(fruit)
+            
+            if collected then
+                StatusLine.Text = "Coleta finalizada. Re-escaneando..."
+                task.wait(1) -- Pequena pausa para fluidez
+            end
+        else
+            -- Se a varredura terminar e NÃO achar nada
+            StatusLine.Text = "Varredura completa: Nenhuma fruta."
+            Notify("Servidor Limpo. Preparando Hop...")
+            
+            task.wait(2) -- Tempo de segurança para garantir que nada spawnou
+            
+            -- Re-checa uma última vez antes de trocar de servidor
+            if not Core.Scan() then
+                StatusLine.Text = "Trocando de servidor..."
+                Core.ServerHop()
+                break -- Para o loop pois o teleporte será iniciado
+            end
+        end
+    end
+end)
