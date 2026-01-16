@@ -1,42 +1,58 @@
+-- FruitCore Module
 local FruitCore = {}
 
--- Serviços Essenciais
-FruitCore.Services = {
-	TweenService = game:GetService("TweenService"),
-	TeleportService = game:GetService("TeleportService"),
-	RunService = game:GetService("RunService"),
-	HttpService = game:GetService("HttpService"),
-	Players = game:GetService("Players")
-}
-
--- Lista Completa de Frutas (Database)
 FruitCore.FruitList = {
-	"Rocket", "Spin", "Chop", "Spring", "Bomb", "Smoke", "Spike", "Flame", "Falcon", 
-	"Ice", "Sand", "Dark", "Diamond", "Light", "Rubber", "Barrier", "Ghost", "Magma", 
-	"Quake", "Buddha", "Love", "Spider", "Sound", "Phoenix", "Portal", "Rumble", 
-	"Pain", "Blizzard", "Gravity", "Mammoth", "T-Rex", "Dough", "Shadow", "Venom", 
-	"Control", "Spirit", "Dragon", "Leopard", "Kitsune"
+    "Rocket", "Spin", "Chop", "Spring", "Bomb", "Smoke", "Spike", "Flame", "Falcon", "Ice", 
+    "Sand", "Dark", "Diamond", "Light", "Rubber", "Barrier", "Ghost", "Magma", "Quake", 
+    "Buddha", "Love", "Spider", "Sound", "Phoenix", "Portal", "Rumble", "Pain", "Blizzard", 
+    "Gravity", "Mammoth", "T-Rex", "Dough", "Shadow", "Venom", "Control", "Spirit", "Dragon", 
+    "Leopard", "Kitsune"
 }
 
--- Função para verificar se um objeto é uma fruta
-function FruitCore.ValidateFruit(object)
-	for _, fruitName in pairs(FruitCore.FruitList) do
-		-- Blox Fruits geralmente usa o padrão "Name Fruit" ou apenas o nome
-		if object.Name:find(fruitName) and (object:IsA("Tool") or object:IsA("Model")) then
-			return true
-		end
-	end
-	return false
+-- Serviços
+local TweenService = game:GetService("TweenService")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+
+-- Função para verificar se é uma fruta válida (Spawnada ou Largada)
+function FruitCore.FindFruits()
+    local found = {}
+    for _, obj in pairs(workspace:GetChildren()) do
+        for _, fruitName in pairs(FruitCore.FruitList) do
+            if obj.Name:find("Fruit") or obj:FindFirstChild("Handle") then
+                if obj.Name:find(fruitName) or (obj:IsA("Tool") and obj.Name:find(fruitName)) then
+                    table.insert(found, obj)
+                end
+            end
+        end
+    end
+    return found
 end
 
--- Sistema de Notificação no Chat
-function FruitCore.Notify(text)
-	game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
-		Text = "{Flow Finder}: " .. text;
-		Color = Color3.fromRGB(255, 255, 255);
-		Font = Enum.Font.SourceSansBold;
-		FontSize = Enum.FontSize.Size18;
-	})
+-- Função de Coleta via Tween (Suave para evitar detecção)
+function FruitCore.Collect(target, character)
+    if not target or not character then return end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local distance = (hrp.Position - target:GetModelCFrame().p).Magnitude
+        local info = TweenInfo.new(distance/50, Enum.EasingStyle.Linear)
+        local tween = TweenService:Create(hrp, info, {CFrame = target:GetModelCFrame()})
+        tween:Play()
+        return tween
+    end
+end
+
+-- Função Server Hop
+function FruitCore.ServerHop()
+    local x = {}
+    for _, v in ipairs(HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")).data) do
+        if v.playing < v.maxPlayers and v.id ~= game.JobId then
+            x[#x + 1] = v.id
+        end
+    end
+    if #x > 0 then
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, x[math.random(1, #x)])
+    end
 end
 
 return FruitCore
