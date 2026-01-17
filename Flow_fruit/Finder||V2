@@ -4,8 +4,8 @@
 ]]
 
 -- CONFIGURAÇÃO --
-local MAX_STORAGE = 1     -- Limite de frutas no inventário (Se tiver Gamepass, aumente para 2, 3...)
-local LOAD_DELAY = 5      -- Segundos para esperar o mapa carregar após entrar nos Marines (Evita bugs de scan)
+local MAX_STORAGE = 3     -- Limite de frutas no inventário (Se tiver Gamepass, aumente para 2, 3...)
+local LOAD_DELAY = 3      -- Segundos para esperar o mapa carregar após entrar nos Marines (Evita bugs de scan)
 
 local function Load(url)
     local s, r = pcall(function() return loadstring(game:HttpGet(url))() end)
