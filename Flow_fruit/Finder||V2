@@ -1,7 +1,10 @@
 --[[ 
-    FLOW FRUIT FINDER - CONTROLADOR AVANÇADO
-    Gerencia: Varredura, Aura (ESP), Coleta e Certificação de Hop.
+    FLOW FRUIT FINDER - CONTROLADOR AVANÇADO v2.0
+    Gerencia: Varredura, Aura (ESP), Verificação de Inventário, Coleta e Hop.
 ]]
+
+-- CONFIGURAÇÃO --
+local MAX_STORAGE = 1 -- Altere para 2, 3, etc. se tiver Gamepass de +1 Storage!
 
 local function Load(url)
     local s, r = pcall(function() return loadstring(game:HttpGet(url))() end)
@@ -13,14 +16,15 @@ local Core = Load("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/r
 local Interface = Load("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit%20finder.Int")
 
 local IMG_ID = "135908570815238"
+local CommF = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CommF_")
 
--- Função de Mensagem Rápida (0.5s com Ícone)
+-- Função de Mensagem Rápida
 local function Notify(text)
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Flow Finder",
         Text = text,
         Icon = "rbxassetid://" .. IMG_ID,
-        Duration = 0.5
+        Duration = 1
     })
     game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
         Text = "{Flow}: " .. text,
@@ -34,22 +38,49 @@ local function ApplyAura(object)
         local Highlight = Instance.new("Highlight")
         Highlight.Name = "FlowAura"
         Highlight.Parent = object
-        Highlight.FillColor = Color3.fromRGB(0, 255, 150) -- Verde neon
-        Highlight.OutlineColor = Color3.new(1, 1, 1) -- Branco
+        Highlight.FillColor = Color3.fromRGB(0, 255, 150)
+        Highlight.OutlineColor = Color3.new(1, 1, 1)
         Highlight.FillTransparency = 0.5
         Highlight.OutlineTransparency = 0
     end
 end
 
+-- Função para Verificar se o Inventário está Cheio para tal fruta
+local function CheckInventoryFull(fruitInstance)
+    local success, inventory = pcall(function() 
+        return CommF:InvokeServer("getInventory") 
+    end)
+    
+    if not success or type(inventory) ~= "table" then return false end -- Falha na leitura, tenta coletar por segurança
+
+    -- Tenta casar o nome (Ex: "Spin Fruit" no chao vs "Spin-Spin" no inventario)
+    -- A lógica pega a primeira palavra: "Spin"
+    local rawName = string.split(fruitInstance.Name, " ")[1]
+    
+    for _, item in pairs(inventory) do
+        -- Verifica se o item contém o nome da fruta (ex: Rocket-Rocket contem Rocket)
+        if string.find(item.Type, rawName) or string.find(item.Name, rawName) then
+            -- Blox Fruits geralmente retorna 1 item com contagem, ou itens separados.
+            -- Verificamos se a contagem (ou existência) atinge o limite.
+            local count = item.Count or 1
+            if count >= MAX_STORAGE then
+                return true -- Está cheio
+            end
+        end
+    end
+    
+    return false -- Não está cheio
+end
+
 -- 1. Seleção de Equipe (Marines)
 pcall(function()
-    game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CommF_"):InvokeServer("SetTeam", "Marines")
+    CommF:InvokeServer("SetTeam", "Marines")
 end)
 
 -- 2. Inicialização da Interface
 local StatusLine = Interface.Create("Hatsune_inkyt", "flow_fruit finder", IMG_ID)
 
--- 3. Conexão do Observador (Notifica as ações do Core)
+-- 3. Conexão do Observador
 if Core and Core.ActionSignal then
     Core.ActionSignal.Event:Connect(function(msg)
         Notify(msg)
@@ -67,41 +98,65 @@ task.spawn(function()
         local fruit = Core.Scan() 
         
         if fruit then
-            -- 1. Certifica a localização e aplica a Aura
+            -- A fruta foi encontrada
             StatusLine.Text = "Fruta Localizada: " .. fruit.Name
             ApplyAura(fruit)
-            Notify("Aura aplicada em: " .. fruit.Name)
-            
-            task.wait(0.3) -- Tempo para o jogador visualizar a aura
-            
-            -- 2. Inicia a Coleta usando o Core
-            local collected = Core.Collect(fruit)
-            
-            -- 3. Certifica que a fruta foi armazenada (verificando se ela sumiu do mapa)
-            if collected then
-                StatusLine.Text = "Verificando armazenamento..."
-                repeat task.wait(0.2) until not fruit:IsDescendantOf(workspace) or not fruit.Parent
+            Notify("Encontrado: " .. fruit.Name)
+            task.wait(0.5)
+
+            -- VERIFICAÇÃO DE INVENTÁRIO (NOVA LÓGICA)
+            StatusLine.Text = "Verificando Limite de Inventário..."
+            local isFull = CheckInventoryFull(fruit)
+
+            if isFull then
+                -- CASO 1: Inventário CHEIO -> Pula Coleta -> Server Hop
+                StatusLine.Text = "Inventário CHEIO ("..fruit.Name.."). Trocando..."
+                Notify("Limite atingido para " .. fruit.Name .. ". Iniciando Hop.")
                 
-                StatusLine.Text = "Armazenado com Sucesso!"
-                Notify("Fruta segura no inventário.")
-                task.wait(1)
+                task.wait(1.5)
+                Core.ServerHop()
+                break -- Encerra loop para trocar de server
+            else
+                -- CASO 2: Inventário LIVRE -> Coleta -> Armazena
+                StatusLine.Text = "Inventário Livre. Coletando..."
+                
+                -- Inicia a Coleta usando o Core
+                local collected = Core.Collect(fruit)
+                
+                -- Certifica que a fruta foi armazenada
+                if collected then
+                    StatusLine.Text = "Verificando armazenamento..."
+                    
+                    -- Espera a fruta sumir do workspace (sinal de que foi guardada ou comida)
+                    local timeout = 0
+                    repeat 
+                        task.wait(0.2)
+                        timeout = timeout + 0.2
+                    until not fruit:IsDescendantOf(workspace) or not fruit.Parent or timeout > 10
+                    
+                    if not fruit:IsDescendantOf(workspace) then
+                        StatusLine.Text = "Armazenado com Sucesso!"
+                        Notify("Fruta segura no inventário.")
+                        task.wait(1)
+                    else
+                         StatusLine.Text = "Erro ao armazenar (Lag?)."
+                    end
+                end
             end
         else
-            -- Lógica de Certificação de Servidor Limpo para Server Hop
+            -- Lógica de Servidor Limpo (Nada encontrado)
             StatusLine.Text = "Nenhuma fruta encontrada. Re-certificando..."
             
-            -- Realiza uma varredura dupla de segurança
             task.wait(2)
             local doubleCheck = Core.Scan()
             
             if not doubleCheck then
-                StatusLine.Text = "Servidor Certificado: Limpo."
+                StatusLine.Text = "Servidor Limpo."
                 Notify("Iniciando Server Hop Seguro...")
                 task.wait(1)
                 
-                -- Executa o Server Hop apenas se o servidor estiver 100% configurado e sem itens
                 Core.ServerHop()
-                break -- Encerra loop local para troca de servidor
+                break
             else
                 StatusLine.Text = "Nova fruta detectada durante certificação!"
             end
