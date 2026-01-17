@@ -1,164 +1,175 @@
 --[[ 
-    FLOW FRUIT FINDER - CONTROLADOR AVANÇADO v2.0
-    Gerencia: Varredura, Aura (ESP), Verificação de Inventário, Coleta e Hop.
+    FLOW FRUIT FINDER - CONTROLADOR AVANÇADO v3.0
+    Atualizações: Delay de Carregamento, Sincronização de Personagem e Lógica de Varredura Otimizada.
 ]]
 
 -- CONFIGURAÇÃO --
-local MAX_STORAGE = 1 -- Altere para 2, 3, etc. se tiver Gamepass de +1 Storage!
+local MAX_STORAGE = 1     -- Limite de frutas no inventário (Se tiver Gamepass, aumente para 2, 3...)
+local LOAD_DELAY = 5      -- Segundos para esperar o mapa carregar após entrar nos Marines (Evita bugs de scan)
 
 local function Load(url)
     local s, r = pcall(function() return loadstring(game:HttpGet(url))() end)
     return s and r or nil
 end
 
--- Carregamento dos Repositórios
+-- Carregamento dos Repositórios (Core e Interface)
 local Core = Load("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Floe_fruit.finder_core")
 local Interface = Load("https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_fruit%20finder.Int")
 
 local IMG_ID = "135908570815238"
+local Players = game:GetService("Players")
+local Client = Players.LocalPlayer
 local CommF = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CommF_")
 
--- Função de Mensagem Rápida
+-- Inicialização da Interface
+local StatusLine = Interface.Create("Hatsune_inkyt", "Flow Finder v3", IMG_ID)
+
+-- Sistema de Notificação
 local function Notify(text)
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Flow Finder",
-        Text = text,
-        Icon = "rbxassetid://" .. IMG_ID,
-        Duration = 1
-    })
-    game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", {
-        Text = "{Flow}: " .. text,
-        Color = Color3.fromRGB(0, 255, 150)
-    })
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Flow Finder",
+            Text = text,
+            Icon = "rbxassetid://" .. IMG_ID,
+            Duration = 2
+        })
+    end)
+    -- Log no Chat (Opcional, removido para ficar mais limpo, descomente se quiser)
+    -- game:GetService("StarterGui"):SetCore("ChatMakeSystemMessage", { Text = "{Flow}: " .. text, Color = Color3.fromRGB(0, 255, 150) })
 end
 
--- Função para Criar Aura (Highlight)
+-- Função de ESP (Aura)
 local function ApplyAura(object)
+    if not object or not object.Parent then return end
     if not object:FindFirstChild("FlowAura") then
         local Highlight = Instance.new("Highlight")
         Highlight.Name = "FlowAura"
         Highlight.Parent = object
-        Highlight.FillColor = Color3.fromRGB(0, 255, 150)
-        Highlight.OutlineColor = Color3.new(1, 1, 1)
-        Highlight.FillTransparency = 0.5
+        Highlight.Adornee = object
+        Highlight.FillColor = Color3.fromRGB(0, 255, 150) -- Verde Neon
+        Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        Highlight.FillTransparency = 0.4
         Highlight.OutlineTransparency = 0
+        Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop -- Vê através das paredes
     end
 end
 
--- Função para Verificar se o Inventário está Cheio para tal fruta
+-- Verificação de Inventário
 local function CheckInventoryFull(fruitInstance)
     local success, inventory = pcall(function() 
         return CommF:InvokeServer("getInventory") 
     end)
     
-    if not success or type(inventory) ~= "table" then return false end -- Falha na leitura, tenta coletar por segurança
+    if not success or type(inventory) ~= "table" then return false end 
 
-    -- Tenta casar o nome (Ex: "Spin Fruit" no chao vs "Spin-Spin" no inventario)
-    -- A lógica pega a primeira palavra: "Spin"
+    -- Ajuste de nome para compatibilidade (Ex: "Spin Fruit" -> "Spin")
     local rawName = string.split(fruitInstance.Name, " ")[1]
     
     for _, item in pairs(inventory) do
-        -- Verifica se o item contém o nome da fruta (ex: Rocket-Rocket contem Rocket)
-        if string.find(item.Type, rawName) or string.find(item.Name, rawName) then
-            -- Blox Fruits geralmente retorna 1 item com contagem, ou itens separados.
-            -- Verificamos se a contagem (ou existência) atinge o limite.
+        if (item.Type and string.find(item.Type, rawName)) or (item.Name and string.find(item.Name, rawName)) then
             local count = item.Count or 1
             if count >= MAX_STORAGE then
-                return true -- Está cheio
+                return true -- Limite atingido
             end
         end
     end
-    
-    return false -- Não está cheio
+    return false
 end
 
--- 1. Seleção de Equipe (Marines)
-pcall(function()
-    CommF:InvokeServer("SetTeam", "Marines")
-end)
-
--- 2. Inicialização da Interface
-local StatusLine = Interface.Create("Hatsune_inkyt", "flow_fruit finder", IMG_ID)
-
--- 3. Conexão do Observador
+-- Conexão com Sinais do Core
 if Core and Core.ActionSignal then
-    Core.ActionSignal.Event:Connect(function(msg)
-        Notify(msg)
-    end)
+    Core.ActionSignal.Event:Connect(function(msg) Notify(msg) end)
 end
 
--- 4. Loop de Controle e Certificação
+-- === LÓGICA PRINCIPAL DE EXECUÇÃO ===
 task.spawn(function()
-    Notify("Sincronização Ativa - Iniciando Varredura")
+    StatusLine.Text = "Iniciando Protocolo..."
+    
+    -- 1. Entrar nos Marines e Aguardar Personagem
+    Notify("Entrando no time Marines...")
+    pcall(function() CommF:InvokeServer("SetTeam", "Marines") end)
+    
+    StatusLine.Text = "Aguardando Personagem..."
+    if not Client.Character then Client.CharacterAdded:Wait() end
+    local HumanoidRootPart = Client.Character:WaitForChild("HumanoidRootPart", 10)
+    
+    if not HumanoidRootPart then
+        Notify("Erro crítico: Personagem não carregou.")
+        return
+    end
+
+    -- 2. Delay de Carregamento (Map Rendering)
+    StatusLine.Text = "Carregando Mapa ("..LOAD_DELAY.."s)..."
+    Notify("Aguardando renderização...")
+    task.wait(LOAD_DELAY)
+
+    -- 3. Loop de Varredura e Coleta
+    Notify("Mapa Carregado. Iniciando Varredura.")
     
     while task.wait(0.5) do
-        StatusLine.Text = "Status: Escaneando Servidor..."
+        StatusLine.Text = "Status: Escaneando..."
         
-        -- Inicia a varredura chamando a função do Core
+        -- Usa o Core para escanear frutas baseadas na lista interna
         local fruit = Core.Scan() 
         
         if fruit then
-            -- A fruta foi encontrada
-            StatusLine.Text = "Fruta Localizada: " .. fruit.Name
+            -- === FRUTA ENCONTRADA ===
+            StatusLine.Text = "DETECTADO: " .. fruit.Name
+            Notify("Fruta encontrada: " .. fruit.Name)
+            
+            -- Aplica ESP visual
             ApplyAura(fruit)
-            Notify("Encontrado: " .. fruit.Name)
-            task.wait(0.5)
-
-            -- VERIFICAÇÃO DE INVENTÁRIO (NOVA LÓGICA)
-            StatusLine.Text = "Verificando Limite de Inventário..."
-            local isFull = CheckInventoryFull(fruit)
-
-            if isFull then
-                -- CASO 1: Inventário CHEIO -> Pula Coleta -> Server Hop
-                StatusLine.Text = "Inventário CHEIO ("..fruit.Name.."). Trocando..."
-                Notify("Limite atingido para " .. fruit.Name .. ". Iniciando Hop.")
-                
-                task.wait(1.5)
+            
+            -- Verifica Inventário
+            StatusLine.Text = "Verificando Capacidade..."
+            if CheckInventoryFull(fruit) then
+                -- INVENTÁRIO CHEIO
+                StatusLine.Text = "Inventário CHEIO. Hopping..."
+                Notify("Você já tem essa fruta! Trocando de servidor...")
+                task.wait(2)
                 Core.ServerHop()
-                break -- Encerra loop para trocar de server
+                break
             else
-                -- CASO 2: Inventário LIVRE -> Coleta -> Armazena
-                StatusLine.Text = "Inventário Livre. Coletando..."
-                
-                -- Inicia a Coleta usando o Core
+                -- INVENTÁRIO LIVRE -> COLETAR
+                StatusLine.Text = "Coletando " .. fruit.Name .. "..."
                 local collected = Core.Collect(fruit)
                 
-                -- Certifica que a fruta foi armazenada
                 if collected then
-                    StatusLine.Text = "Verificando armazenamento..."
+                    StatusLine.Text = "Validando armazenamento..."
                     
-                    -- Espera a fruta sumir do workspace (sinal de que foi guardada ou comida)
+                    -- Aguarda a fruta desaparecer (sinal de sucesso)
                     local timeout = 0
                     repeat 
                         task.wait(0.2)
                         timeout = timeout + 0.2
-                    until not fruit:IsDescendantOf(workspace) or not fruit.Parent or timeout > 10
+                    until not fruit or not fruit.Parent or timeout > 8
                     
-                    if not fruit:IsDescendantOf(workspace) then
-                        StatusLine.Text = "Armazenado com Sucesso!"
-                        Notify("Fruta segura no inventário.")
-                        task.wait(1)
+                    if not fruit or not fruit.Parent then
+                        StatusLine.Text = "SUCESSO! Armazenada."
+                        Notify("Fruta guardada com sucesso.")
+                        task.wait(1.5)
+                        -- O loop continua para procurar mais frutas se houver
                     else
-                         StatusLine.Text = "Erro ao armazenar (Lag?)."
+                        StatusLine.Text = "Falha ao coletar (Lag/Bug)."
                     end
                 end
             end
         else
-            -- Lógica de Servidor Limpo (Nada encontrado)
-            StatusLine.Text = "Nenhuma fruta encontrada. Re-certificando..."
+            -- === NENHUMA FRUTA ENCONTRADA ===
+            StatusLine.Text = "Nada encontrado. Verificando novamente..."
             
+            -- Varredura Dupla de Segurança (Double Check)
             task.wait(2)
             local doubleCheck = Core.Scan()
             
             if not doubleCheck then
-                StatusLine.Text = "Servidor Limpo."
-                Notify("Iniciando Server Hop Seguro...")
-                task.wait(1)
-                
+                StatusLine.Text = "Servidor Limpo. Trocando..."
+                Notify("Servidor vazio. Iniciando Server Hop...")
+                task.wait(1.5)
                 Core.ServerHop()
-                break
+                break -- Quebra o loop para garantir que o Hop aconteça
             else
-                StatusLine.Text = "Nova fruta detectada durante certificação!"
+                Notify("Fruta apareceu no último segundo!")
             end
         end
     end
