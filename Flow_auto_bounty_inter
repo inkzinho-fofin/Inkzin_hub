@@ -1,37 +1,55 @@
--- Interface Module
-local Interface = {}
+-- Core Module: Bounty Logic
+local Core = {}
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
-function Interface:CreateMenu(scriptName, author)
-    local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
-    
-    -- Botão Redondo (Toggle)
-    local ToggleBtn = Instance.new("ImageButton", ScreenGui)
-    ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
-    ToggleBtn.Position = UDim2.new(0, 20, 0, 20)
-    ToggleBtn.Image = "rbxassetid://135650318721215"
-    
-    local Corner = Instance.new("UICorner", ToggleBtn)
-    Corner.CornerRadius = UDim.new(1, 0)
-    
-    -- Painel Principal
-    local MainFrame = Instance.new("Frame", ScreenGui)
-    MainFrame.Size = UDim2.new(0, 300, 0, 400)
-    MainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    MainFrame.Visible = false
-    
-    -- Header
-    local Title = Instance.new("TextLabel", MainFrame)
-    Title.Text = scriptName .. " | by " .. author
-    Title.Size = UDim2.new(1, 0, 0, 40)
-    Title.TextColor3 = Color3.new(1, 1, 1)
-    Title.BackgroundTransparency = 1
-    
-    ToggleBtn.MouseButton1Click:Connect(function()
-        MainFrame.Visible = not MainFrame.Visible
-    end)
-    
-    return MainFrame
+Core.Active = true
+
+function Core:GetTarget()
+    local nearest = nil
+    local dist = math.huge
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            local d = (LocalPlayer.Character.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).Magnitude
+            if d < dist then
+                dist = d
+                nearest = v
+            end
+        end
+    end
+    return nearest
 end
 
-return Interface
+function Core:Attack(target)
+    local settings = getgenv().Setting
+    -- Lógica de uso de habilidades baseada na configuração de Item
+    for category, data in pairs(settings.Item) do
+        if data["Habilitar"] then
+            -- Simulacro de uso de skills (Z, X, C, V) com cooldown
+            for skill, info in pairs(data) do
+                if type(info) == "table" and info["Habilitar"] then
+                    print("Usando Skill: " .. skill .. " de " .. category)
+                    task.wait(info["Tempo de espera"] or settings.Diversos["Atraso do clique"])
+                end
+            end
+        end
+    end
+end
+
+function Core:Travel(targetCFrame)
+    if not getgenv().Setting.Diversos["Tween"] then 
+        LocalPlayer.Character.HumanoidRootPart.CFrame = targetCFrame
+        return 
+    end
+    
+    local speed = 250 -- Velocidade padrão de Tween
+    local dist = (LocalPlayer.Character.HumanoidRootPart.Position - targetCFrame.Position).Magnitude
+    local info = TweenInfo.new(dist/speed, Enum.EasingStyle.Linear)
+    
+    local tween = TweenService:Create(LocalPlayer.Character.HumanoidRootPart, info, {CFrame = targetCFrame})
+    tween:Play()
+    return tween
+end
+
+return Core
