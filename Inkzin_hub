@@ -1,138 +1,153 @@
-local T = _G.Tabs
-local LP = game.Players.LocalPlayer
+--[[
+    FLOW-BLOX LIBRARY v3.0 (COMPLETA - 2026)
+    O ecossistema definitivo para Luau no Roblox.
+]]
 
--- [[ FARM ]]
-T.Farm:AddButton("Auto Farm Level (1-700)", function() _G.AutoFarm = not _G.AutoFarm end)
-T.Farm:AddButton("Auto Farm Boss (Low Sea)", function() end)
-T.Farm:AddButton("Auto Farm Berry (Chest)", function() end)
+local FlowBlox = {}
+FlowBlox.__index = FlowBlox
 
--- [[ CONFIGURAÇÕES ]]
-T.Config:AddSlider("Velocidade de Voo", 100, 300, 150, function(v) _G.FlySpeed = v end)
-T.Config:AddButton("Auto Stats: Melee", function() _G.AutoStats = not _G.AutoStats end)
-T.Config:AddButton("Ativar Anti-AFK", function() 
-    local vu = game:GetService("VirtualUser")
-    LP.Idled:Connect(function()
-        vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-        task.wait(1)
-        vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-    end)
-end)
+-- [ 1. KERNEL: CARREGAMENTO DINÂMICO DE SERVIÇOS ]
+-- Permite acesso como: FlowBlox.RunService ou FlowBlox.HttpService
+setmetatable(FlowBlox, {
+    __index = function(_, key)
+        local success, service = pcall(function() return game:GetService(key) end)
+        if success then
+            FlowBlox[key] = service
+            return service
+        end
+        return nil
+    end
+})
 
+-- [ 2. INSTANCE FACTORY (Criação de Objetos) ]
+FlowBlox.Creator = {
+    New = function(className, properties, parent)
+        local obj = Instance.new(className)
+        for prop, val in pairs(properties or {}) do
+            obj[prop] = val
+        end
+        if parent then obj.Parent = parent end
+        return obj
+    end,
+    
+    Clone = function(obj, properties, parent)
+        local newObj = obj:Clone()
+        for prop, val in pairs(properties or {}) do
+            newObj[prop] = val
+        end
+        if parent then newObj.Parent = parent end
+        return newObj
+    end
+}
 
--- [[ ESPECIAL ]]
-T.Especial:AddButton("Auto Saber Quest (Shanks)", function() end)
-T.Especial:AddButton("Auto Pirate Quest (Buggy)", function() end)
+-- [ 3. PLAYER & CHARACTER (Gestão de Jogadores) ]
+FlowBlox.Users = {
+    LocalPlayer = game:GetService("Players").LocalPlayer,
+    
+    GetCharacter = function(player)
+        player = player or game:GetService("Players").LocalPlayer
+        return player.Character or player.CharacterAdded:Wait()
+    end,
+    
+    Notify = function(title, text, duration, icon)
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = title or "Flow-Blox",
+            Text = text or "",
+            Duration = duration or 5,
+            Icon = icon or ""
+        })
+    end,
+    
+    EquipTool = function(tool, player)
+        local char = FlowBlox.Users.GetCharacter(player)
+        tool.Parent = char
+    end
+}
 
--- [[ FRUITS ]]
-T.Fruits:AddButton("Girar Fruta (Cousin)", function() 
-    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Cousin", "Buy")
-end)
-T.Fruits:AddButton("ESP Frutas", function() end)
+-- [ 4. TWEEN ENGINE (Animações Modernas) ]
+FlowBlox.Animate = function(object, duration, properties, style, direction)
+    local tweenInfo = TweenInfo.new(
+        duration or 1,
+        style or Enum.EasingStyle.Quad,
+        direction or Enum.EasingDirection.Out
+    )
+    local tween = game:GetService("TweenService"):Create(object, tweenInfo, properties)
+    tween:Play()
+    return tween
+end
 
--- [[ SEA EVENTS ]]
-T.SeaEvents:AddButton("Aviso: Sem eventos no Sea 1", function() end)
+-- [ 5. DATA MANAGEMENT (Persistência) ]
+FlowBlox.Data = {
+    Save = function(storeName, key, value)
+        local ds = game:GetService("DataStoreService"):GetDataStore(storeName)
+        local success, err = pcall(function() return ds:SetAsync(key, value) end)
+        return success, err
+    end,
+    
+    Fetch = function(storeName, key)
+        local ds = game:GetService("DataStoreService"):GetDataStore(storeName)
+        local success, data = pcall(function() return ds:GetAsync(key) end)
+        return data, success
+    end
+}
 
--- [[ RAIDS ]]
-T.Raids:AddButton("Aviso: Raids apenas no Sea 2+", function() end)
+-- [ 6. RAYCASTING & SPATIAL (Física) ]
+FlowBlox.Spatial = {
+    QuickCast = function(origin, direction, ignoreList)
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Exclude
+        params.FilterDescendantsInstances = ignoreList or {}
+        return workspace:Raycast(origin, direction, params)
+    end,
+    
+    GetDistance = function(pos1, pos2)
+        return (pos1 - pos2).Magnitude
+    end
+}
 
--- [[ TELEPORTE ]]
-T.Teleporte:AddButton("Teleport Jungle", function() LP.Character.HumanoidRootPart.CFrame = CFrame.new(-1610, 37, 150) end)
-T.Teleporte:AddButton("Teleport Marineford", function() LP.Character.HumanoidRootPart.CFrame = CFrame.new(-4920, 20, 4270) end)
+-- [ 7. NETWORK (Remotes Facilitados) ]
+FlowBlox.Net = {
+    FireServer = function(name, ...)
+        local remote = game:GetService("ReplicatedStorage"):FindFirstChild(name)
+        if remote and remote:IsA("RemoteEvent") then
+            remote:FireServer(...)
+        end
+    end,
+    
+    OnClientEvent = function(name, callback)
+        local remote = game:GetService("ReplicatedStorage"):WaitForChild(name)
+        return remote.OnClientEvent:Connect(callback)
+    end
+}
 
-local T = _G.Tabs
-local LP = game.Players.LocalPlayer
+-- [ 8. TASK SCHEDULER (Gestão de Tempo 2026) ]
+FlowBlox.Schedule = {
+    Wait = task.wait,
+    Defer = task.defer,
+    Delay = task.delay,
+    Spawn = task.spawn,
+    
+    Every = function(seconds, callback)
+        return task.spawn(function()
+            while true do
+                callback()
+                task.wait(seconds)
+            end
+        end)
+    end
+}
 
--- [[ FARM ]]
-T.Farm:AddButton("Auto Farm Level", function() _G.AutoFarm = not _G.AutoFarm end)
-T.Farm:AddButton("Auto Farm Boss", function() end)
-T.Farm:AddButton("Auto Farm Berry", function() end)
+-- [ 9. UI HELPERS ]
+FlowBlox.UI = {
+    CreateScreen = function(name)
+        return FlowBlox.Creator.New("ScreenGui", {Name = name, ResetOnSpawn = false}, 
+            FlowBlox.Users.LocalPlayer:WaitForChild("PlayerGui"))
+    end,
+    
+    FadeIn = function(guiObject, duration)
+        guiObject.Visible = true
+        return FlowBlox.Animate(guiObject, duration, {GroupTransparency = 0})
+    end
+}
 
--- [[ CONFIGURAÇÕES ]]
-T.Config:AddSlider("Velocidade de Voo", 100, 350, 200, function(v) _G.FlySpeed = v end)
-T.Config:AddButton("Ativar Anti-AFK", function() 
-    game:GetService("Players").LocalPlayer.Idled:Connect(function()
-        game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-        task.wait(1)
-        game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-    end)
-end)
-T.Config:AddButton("Fast Attack: ON", function() _G.FastAttack = not _G.FastAttack end)
-
--- [[ ESPECIAL ]]
-T.Especial:AddButton("Auto Rengoku", function() end)
-T.Especial:AddButton("Auto Cyborg (Core Brain)", function() end)
-
--- [[ FRUITS ]]
-T.Fruits:AddButton("Girar Fruta (Gacha)", function() 
-    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Cousin", "Buy")
-end)
-T.Fruits:AddButton("Auto Store Fruits", function() end)
-
--- [[ SEA EVENTS ]]
-T.SeaEvents:AddButton("Auto Factory", function() end)
-T.SeaEvents:AddButton("Auto Ship Raid", function() end)
-
--- [[ RAIDS ]]
-_G.SelectedRaid = "Flame"
-T.Raids:AddButton("Selecionar Raid: " .. _G.SelectedRaid, function(self)
-    local r = {"Flame", "Ice", "Quake", "Light", "Dark", "Spider", "Rumble", "Magma", "Buddha"}
-    local i = table.find(r, _G.SelectedRaid) or 1
-    _G.SelectedRaid = r[i + 1] or r[1]
-    self.Text = "Selecionar Raid: " .. _G.SelectedRaid
-end)
-T.Raids:AddButton("Auto Iniciar Raid", function() end)
-
--- [[ TELEPORTE ]]
-T.Teleporte:AddButton("Teleport Cafe", function() 
-    LP.Character.HumanoidRootPart.CFrame = CFrame.new(-380, 77, 255) 
-end)
-T.Teleporte:AddButton("Teleport Green Zone", function() 
-    LP.Character.HumanoidRootPart.CFrame = CFrame.new(-2450, 73, -3000) 
-end)
-
-
-
-local T = _G.Tabs
-local LP = game.Players.LocalPlayer
-
--- [[ FARM ]]
-T.Farm:AddButton("Auto Farm Level (1500-2800)", function() _G.AutoFarm = not _G.AutoFarm end)
-T.Farm:AddButton("Auto Farm Ossos (Bones)", function() end)
-T.Farm:AddButton("Auto Farm Cake Prince", function() end)
-
--- [[ CONFIGURAÇÕES ]]
-T.Config:AddSlider("Velocidade de Voo", 100, 350, 200, function(v) _G.FlySpeed = v end)
-T.Config:AddButton("Fast Attack (Ultra)", function() _G.FastAttack = not _G.FastAttack end)
-T.Config:AddButton("Ativar Anti-AFK", function() 
-    local vu = game:GetService("VirtualUser")
-    LP.Idled:Connect(function()
-        vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-        task.wait(1)
-        vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-    end)
-end)
-
--- [[ ESPECIAL ]]
-T.Especial:AddButton("Auto Elite Hunter (Yama)", function() end)
-T.Especial:AddButton("Auto Tushita Quest", function() end)
-T.Especial:AddButton("Auto Soul Guitar Quest", function() end)
-
--- [[ FRUITS ]]
-T.Fruits:AddButton("Girar Fruta (Gacha)", function() 
-    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Cousin", "Buy")
-end)
-T.Fruits:AddButton("Auto Store Fruits", function() end)
-
--- [[ SEA EVENTS ]]
-T.SeaEvents:AddButton("ESP Mirage Island", function() end)
-T.SeaEvents:AddButton("Auto Pirate Raid (Castle)", function() end)
-T.SeaEvents:AddButton("Terror Shark Tracker", function() end)
-
--- [[ RAIDS ]]
-T.Raids:AddButton("Auto Start Raid (Castle)", function() end)
-T.Raids:AddButton("Auto Kill Raid Boss", function() end)
-
--- [[ TELEPORTE ]]
-T.Teleporte:AddButton("Teleport Castle on Sea", function() LP.Character.HumanoidRootPart.CFrame = CFrame.new(-5000, 315, -3000) end)
-T.Teleporte:AddButton("Teleport Mansion (Turtle)", function() LP.Character.HumanoidRootPart.CFrame = CFrame.new(-12465, 375, -7560) end)
-T.Teleporte:AddButton("Teleport Tiki Outpost", function() LP.Character.HumanoidRootPart.CFrame = CFrame.new(-16200, 15, 1000) end)
+return FlowBlox
