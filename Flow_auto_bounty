@@ -1,0 +1,25 @@
+-- Configurações Iniciais
+local CoreURL = "LINK_DO_SEU_GITHUB_CORE_AQUI"
+local UIURL = "LINK_DO_SEU_GITHUB_INTERFACE_AQUI"
+
+-- Carregando Repositórios
+local Core = loadstring(game:HttpGet(CoreURL))()
+local UI = loadstring(game:HttpGet(UIURL))()
+
+-- Criar Interface
+local MainPanel = UI:CreateMenu("flow_bounty", "Hatsune_inkyt")
+
+-- Exemplo de uso de funções do Core via LocalScript:
+-- Aqui você pode criar Sliders na UI que alteram estes valores:
+Core.Settings.TweenSpeed = 100 -- Altera velocidade do teleporte
+Core.Settings.SkillDelay = 0.5 -- Altera cooldown das habilidades
+
+print("Sistema Flow Bounty Carregado!")
+
+-- Exemplo de função de caça (Auto-Target)
+local function huntPlayer(name)
+    local target = game.Players:FindFirstChild(name)
+    if target then
+        Core:TeleportToPlayer(target)
+    end
+end
