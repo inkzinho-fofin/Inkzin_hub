@@ -1,6 +1,6 @@
 -- Configurações Iniciais
-local CoreURL = "LINK_DO_SEU_GITHUB_CORE_AQUI"
-local UIURL = "LINK_DO_SEU_GITHUB_INTERFACE_AQUI"
+local CoreURL = "https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_Core_auto_bounty.lua?token=GHSAT0AAAAAADS5PTZZO5WOPSG7JP2X23642LNB66A"
+local UIURL = "https://raw.githubusercontent.com/inkzinho-fofin/Inkzin_hub/refs/heads/main/Flow_auto_bounty_inter?token=GHSAT0AAAAAADS5PTZYSH4YY47344RFOPOO2LNCAFA"
 
 -- Carregando Repositórios
 local Core = loadstring(game:HttpGet(CoreURL))()
