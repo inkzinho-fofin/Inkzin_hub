@@ -1,132 +1,109 @@
 --[[
-    FLOW-BLOX LIBRARY v3.0 (COMPLETA - 2026)
+    FLOW-BLOX LIBRARY v3.0 (ULTIMATE EDITION - 2026)
     O ecossistema definitivo para Luau no Roblox.
+    Desenvolvido para: flow-blox kaitun | Hatsune_inkyt
 ]]
 
 local FlowBlox = {}
 FlowBlox.__index = FlowBlox
 
--- [ 1. KERNEL: CARREGAMENTO DINÂMICO DE SERVIÇOS ]
--- Permite acesso como: FlowBlox.RunService ou FlowBlox.HttpService
+-- [ 1. KERNEL & SERVICES ]
 setmetatable(FlowBlox, {
     __index = function(_, key)
         local success, service = pcall(function() return game:GetService(key) end)
-        if success then
-            FlowBlox[key] = service
-            return service
-        end
+        if success then FlowBlox[key] = service return service end
         return nil
     end
 })
 
--- [ 2. INSTANCE FACTORY (Criação de Objetos) ]
+-- [ 2. INSTANCE FACTORY ]
 FlowBlox.Creator = {
     New = function(className, properties, parent)
         local obj = Instance.new(className)
-        for prop, val in pairs(properties or {}) do
-            obj[prop] = val
-        end
+        for prop, val in pairs(properties or {}) do obj[prop] = val end
         if parent then obj.Parent = parent end
         return obj
-    end,
-    
-    Clone = function(obj, properties, parent)
-        local newObj = obj:Clone()
-        for prop, val in pairs(properties or {}) do
-            newObj[prop] = val
-        end
-        if parent then newObj.Parent = parent end
-        return newObj
     end
 }
 
--- [ 3. PLAYER & CHARACTER (Gestão de Jogadores) ]
+-- [ 3. PLAYER & CHARACTER ]
 FlowBlox.Users = {
-    LocalPlayer = game:GetService("Players").LocalPlayer,
-    
-    GetCharacter = function(player)
-        player = player or game:GetService("Players").LocalPlayer
-        return player.Character or player.CharacterAdded:Wait()
+    LocalPlayer = game.Players.LocalPlayer,
+    GetCharacter = function()
+        return game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
     end,
-    
-    Notify = function(title, text, duration, icon)
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = title or "Flow-Blox",
-            Text = text or "",
-            Duration = duration or 5,
-            Icon = icon or ""
-        })
-    end,
-    
-    EquipTool = function(tool, player)
-        local char = FlowBlox.Users.GetCharacter(player)
-        tool.Parent = char
+    EquipTool = function(toolName)
+        local bp = game.Players.LocalPlayer.Backpack:FindFirstChild(toolName)
+        if bp then bp.Parent = FlowBlox.Users.GetCharacter() end
     end
 }
 
--- [ 4. TWEEN ENGINE (Animações Modernas) ]
-FlowBlox.Animate = function(object, duration, properties, style, direction)
-    local tweenInfo = TweenInfo.new(
-        duration or 1,
-        style or Enum.EasingStyle.Quad,
-        direction or Enum.EasingDirection.Out
-    )
+-- [ 4. PROGRESSION ENGINE (O CÉREBRO DO KAITUN) ]
+FlowBlox.Progression = {
+    -- Tabela de dados de nível (Exemplo simplificado Sea 1)
+    LevelData = {
+        {MinLvl = 0, MaxLvl = 15, Enemy = "Bandit", Quest = "BanditQuest1", Pos = Vector3.new(1059, 15, 1545)},
+        {MinLvl = 15, MaxLvl = 30, Enemy = "Monkey", Quest = "JungleQuest", Pos = Vector3.new(-1610, 36, 150)},
+        {MinLvl = 30, MaxLvl = 60, Enemy = "Gorilla", Quest = "GorillaQuest", Pos = Vector3.new(-1210, 28, -230)},
+        -- Adicione aqui até o 2800 seguindo o padrão
+    },
+
+    GetTask = function()
+        local currentLvl = game.Players.LocalPlayer.Data.Level.Value
+        for _, data in ipairs(FlowBlox.Progression.LevelData) do
+            if currentLvl >= data.MinLvl and currentLvl < data.MaxLvl then
+                return data
+            end
+        end
+        return FlowBlox.Progression.LevelData[#FlowBlox.Progression.LevelData]
+    end,
+
+    GetCurrentSea = function()
+        local placeId = game.PlaceId
+        if placeId == 2753915549 then return 1
+        elseif placeId == 4442272183 then return 2
+        elseif placeId == 7449925069 then return 3
+        end
+        return 1
+    end
+}
+
+-- [ 5. TWEEN ENGINE ]
+FlowBlox.Animate = function(object, duration, properties)
+    local tweenInfo = TweenInfo.new(duration or 1, Enum.EasingStyle.Linear)
     local tween = game:GetService("TweenService"):Create(object, tweenInfo, properties)
     tween:Play()
     return tween
 end
 
--- [ 5. DATA MANAGEMENT (Persistência) ]
-FlowBlox.Data = {
-    Save = function(storeName, key, value)
-        local ds = game:GetService("DataStoreService"):GetDataStore(storeName)
-        local success, err = pcall(function() return ds:SetAsync(key, value) end)
-        return success, err
-    end,
-    
-    Fetch = function(storeName, key)
-        local ds = game:GetService("DataStoreService"):GetDataStore(storeName)
-        local success, data = pcall(function() return ds:GetAsync(key) end)
-        return data, success
-    end
-}
-
--- [ 6. RAYCASTING & SPATIAL (Física) ]
+-- [ 6. SPATIAL & PHYSICS ]
 FlowBlox.Spatial = {
-    QuickCast = function(origin, direction, ignoreList)
-        local params = RaycastParams.new()
-        params.FilterType = Enum.RaycastFilterType.Exclude
-        params.FilterDescendantsInstances = ignoreList or {}
-        return workspace:Raycast(origin, direction, params)
-    end,
-    
     GetDistance = function(pos1, pos2)
         return (pos1 - pos2).Magnitude
-    end
-}
-
--- [ 7. NETWORK (Remotes Facilitados) ]
-FlowBlox.Net = {
-    FireServer = function(name, ...)
-        local remote = game:GetService("ReplicatedStorage"):FindFirstChild(name)
-        if remote and remote:IsA("RemoteEvent") then
-            remote:FireServer(...)
-        end
     end,
     
-    OnClientEvent = function(name, callback)
-        local remote = game:GetService("ReplicatedStorage"):WaitForChild(name)
-        return remote.OnClientEvent:Connect(callback)
+    SafeTween = function(targetPos)
+        local char = FlowBlox.Users.GetCharacter()
+        local root = char:WaitForChild("HumanoidRootPart")
+        local dist = FlowBlox.Spatial.GetDistance(root.Position, targetPos)
+        local speed = 300 -- Velocidade do Tween (ajustável)
+        local duration = dist / speed
+        
+        return FlowBlox.Animate(root, duration, {CFrame = CFrame.new(targetPos)})
     end
 }
 
--- [ 8. TASK SCHEDULER (Gestão de Tempo 2026) ]
+-- [ 7. NETWORK ]
+FlowBlox.Net = {
+    FireServer = function(...)
+        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(...)
+    end
+}
+
+-- [ 8. TASK SCHEDULER ]
 FlowBlox.Schedule = {
     Wait = task.wait,
-    Defer = task.defer,
-    Delay = task.delay,
     Spawn = task.spawn,
-    
     Every = function(seconds, callback)
         return task.spawn(function()
             while true do
@@ -141,12 +118,7 @@ FlowBlox.Schedule = {
 FlowBlox.UI = {
     CreateScreen = function(name)
         return FlowBlox.Creator.New("ScreenGui", {Name = name, ResetOnSpawn = false}, 
-            FlowBlox.Users.LocalPlayer:WaitForChild("PlayerGui"))
-    end,
-    
-    FadeIn = function(guiObject, duration)
-        guiObject.Visible = true
-        return FlowBlox.Animate(guiObject, duration, {GroupTransparency = 0})
+            game.Players.LocalPlayer:WaitForChild("PlayerGui"))
     end
 }
 
