@@ -1,0 +1,169 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local UserInputService = game:GetService("UserInputService")
+
+-- Configurações Visuais
+local UI_NAME = "FlowBasicFarmUI"
+local TITLE_TEXT = "flow Basic Farm"
+local CREATOR_TEXT = "Criado por: Hatsune_inkyt"
+
+-- Verifica se a UI já existe para não duplicar
+if PlayerGui:FindFirstChild(UI_NAME) then
+    PlayerGui[UI_NAME]:Destroy()
+end
+
+-- 1. Criação da ScreenGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = UI_NAME
+ScreenGui.Parent = PlayerGui
+ScreenGui.Enabled = false -- Começa fechado (usa /on para abrir)
+
+-- 2. Frame Principal (A Janela)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(100, 100, 255) -- Borda azulada
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -125) -- Centralizado
+MainFrame.Size = UDim2.new(0, 300, 0, 250) -- Tamanho médio
+
+-- Título
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Parent = MainFrame
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Position = UDim2.new(0, 0, 0, 5)
+TitleLabel.Size = UDim2.new(1, 0, 0, 30)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.Text = TITLE_TEXT
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.TextSize = 20
+
+-- Créditos
+local CreditLabel = Instance.new("TextLabel")
+CreditLabel.Parent = MainFrame
+CreditLabel.BackgroundTransparency = 1
+CreditLabel.Position = UDim2.new(0, 0, 0, 30)
+CreditLabel.Size = UDim2.new(1, 0, 0, 20)
+CreditLabel.Font = Enum.Font.Gotham
+CreditLabel.Text = CREATOR_TEXT
+CreditLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+CreditLabel.TextSize = 12
+
+-- Container para os botões
+local ButtonContainer = Instance.new("Frame")
+ButtonContainer.Parent = MainFrame
+ButtonContainer.BackgroundTransparency = 1
+ButtonContainer.Position = UDim2.new(0, 20, 0, 60)
+ButtonContainer.Size = UDim2.new(1, -40, 1, -70)
+
+-- --- FUNÇÃO PARA CRIAR BOTÕES TOGGLE (ALAVANCA) ---
+local function createToggle(name, text, positionY, callback)
+    local ToggleFrame = Instance.new("Frame")
+    ToggleFrame.Name = name
+    ToggleFrame.Parent = ButtonContainer
+    ToggleFrame.BackgroundTransparency = 1
+    ToggleFrame.Position = UDim2.new(0, 0, 0, positionY)
+    ToggleFrame.Size = UDim2.new(1, 0, 0, 40)
+
+    local Label = Instance.new("TextLabel")
+    Label.Parent = ToggleFrame
+    Label.BackgroundTransparency = 1
+    Label.Position = UDim2.new(0, 0, 0, 0)
+    Label.Size = UDim2.new(0.6, 0, 1, 0)
+    Label.Font = Enum.Font.GothamSemibold
+    Label.Text = text
+    Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.TextSize = 16
+
+    -- O botão de fundo (Slot da alavanca)
+    local SwitchBg = Instance.new("TextButton")
+    SwitchBg.Parent = ToggleFrame
+    SwitchBg.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    SwitchBg.BorderSizePixel = 0
+    SwitchBg.Position = UDim2.new(0.7, 0, 0.25, 0)
+    SwitchBg.Size = UDim2.new(0, 50, 0, 24)
+    SwitchBg.Text = ""
+    
+    local UICornerBg = Instance.new("UICorner")
+    UICornerBg.CornerRadius = UDim.new(1, 0)
+    UICornerBg.Parent = SwitchBg
+
+    -- A bola da alavanca
+    local SwitchCircle = Instance.new("Frame")
+    SwitchCircle.Parent = SwitchBg
+    SwitchCircle.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+    SwitchCircle.Position = UDim2.new(0, 2, 0.5, -10)
+    SwitchCircle.Size = UDim2.new(0, 20, 0, 20)
+    
+    local UICornerCircle = Instance.new("UICorner")
+    UICornerCircle.CornerRadius = UDim.new(1, 0)
+    UICornerCircle.Parent = SwitchCircle
+
+    -- Lógica de Ativar/Desativar
+    local isOn = false
+
+    SwitchBg.MouseButton1Click:Connect(function()
+        isOn = not isOn
+        
+        if isOn then
+            -- Animação visual para LIGADO
+            SwitchBg.BackgroundColor3 = Color3.fromRGB(0, 170, 0) -- Verde
+            SwitchCircle:TweenPosition(UDim2.new(1, -22, 0.5, -10), "Out", "Sine", 0.2, true)
+        else
+            -- Animação visual para DESLIGADO
+            SwitchBg.BackgroundColor3 = Color3.fromRGB(60, 60, 60) -- Cinza
+            SwitchCircle:TweenPosition(UDim2.new(0, 2, 0.5, -10), "Out", "Sine", 0.2, true)
+        end
+        
+        -- Chama a função (callback) passando o estado atual
+        callback(isOn)
+    end)
+end
+
+-- --- CRIANDO OS BOTÕES ---
+
+-- 1. Opção Farm Level
+createToggle("FarmLevel", "Auto Farm (Nível)", 0, function(state)
+    if state then
+        print("Ativado: Farm de Nível")
+        print(">> Lógica simulada: Detectar nível, Teleportar ilha, Pegar missão, M1 Click")
+        -- AQUI IRIA A LÓGICA DE FARM (REMOVIDO POR SEGURANÇA)
+    else
+        print("Desativado: Farm de Nível")
+    end
+end)
+
+-- 2. Opção Farm Chests
+createToggle("FarmChests", "Farm Baús (Server)", 50, function(state)
+    if state then
+        print("Ativado: Farm de Baús")
+        print(">> Lógica simulada: Escanear Workspace, Teleportar para baús")
+        -- AQUI IRIA A LÓGICA DE BAÚS (REMOVIDO POR SEGURANÇA)
+    else
+        print("Desativado: Farm de Baús")
+    end
+end)
+
+-- --- COMANDOS DE CHAT (/on e /off) ---
+
+LocalPlayer.Chatted:Connect(function(message)
+    local msg = message:lower() -- Transforma em minúsculo para facilitar
+    
+    if msg == "/on" then
+        ScreenGui.Enabled = true
+        print("Interface Aberta")
+    elseif msg == "/off" then
+        ScreenGui.Enabled = false
+        print("Interface Fechada")
+    end
+end)
+
+-- Notificação inicial
+game.StarterGui:SetCore("SendNotification", {
+    Title = "Script Carregado";
+    Text = "Digite /on para abrir e /off para fechar.";
+    Duration = 5;
+})
