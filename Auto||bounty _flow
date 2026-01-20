@@ -1,0 +1,24 @@
+-- Aguarda o jogo carregar completamente
+repeat wait() until game:IsLoaded() and game.Players.LocalPlayer
+
+-- Sistema de Notificação (Mantido do original para feedback visual)
+local notify = loadstring(game:HttpGet("https://raw.githubusercontent.com/acsu123/HOHO_H/main/Notification.lua"))()
+
+-- Define que o hub foi carregado para evitar verificação interna
+_G.HoHoLoaded = true
+
+-- ID do Blox Fruits (Universe ID)
+local BloxFruitsID = 994732206
+
+-- Verificação do Jogo e Execução
+if game.GameId == BloxFruitsID then
+    -- Notificação de inicio
+    notify.New("Flow_Auto Bounty: Carregando...", 5)
+    
+    -- Executa o script específico do Blox Fruits (Link extraído da sua lista original)
+    loadstring(game:HttpGet('https://raw.githubusercontent.com/acsu123/HohoV2/main/BloxFruit/BloxFruitTEST_ONLY.lua'))()
+else
+    -- Caso tente executar em outro jogo
+    notify.New("Flow_Auto Bounty: Este script é exclusivo para Blox Fruits!", 10)
+    warn("Flow_Auto Bounty: Jogo não suportado. ID atual: " .. tostring(game.GameId))
+end
