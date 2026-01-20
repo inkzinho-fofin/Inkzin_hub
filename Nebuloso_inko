@@ -2,15 +2,15 @@ local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
-local RunService = game:GetService("RunService") -- Necessário para loops rápidos
+local RunService = game:GetService("RunService")
 local Settings = settings()
 
 local player = Players.LocalPlayer
 
--- Configurações de ColorCorrection (Saturação)
+-- Configurações de ColorCorrection
 local colorCorrection = Lighting:FindFirstChild("WDayCorrection") or Instance.new("ColorCorrectionEffect", Lighting)
 colorCorrection.Name = "WDayCorrection"
-colorCorrection.Saturation = 0 
+colorCorrection.Saturation = 0
 
 -- Configurações Padrão
 local DEFAULT_FOG_START = 100
@@ -22,19 +22,17 @@ local TRANSITION_TIME = 3
 
 -- Variáveis de Controle
 local pulseActive = false
-local pulseConn = nil
 local rfogActive = false
-local rfogConnection = nil
 local nocdActive = false
-local nocdConnection = nil
+local nocdValue = 0
 
--- === Funções Auxiliares ===
+--- === FUNÇÕES AUXILIARES === ---
 
 local function notify(msg)
 	task.spawn(function()
 		pcall(function()
 			StarterGui:SetCore("SendNotification", {
-				Title = "Clima Dinâmico",
+				Title = "Sistema Ativo",
 				Text = msg,
 				Duration = 3
 			})
@@ -42,46 +40,30 @@ local function notify(msg)
 	end)
 end
 
--- Função para encontrar jogador (Nome parcial, @r, @p)
-local function getTargetPlayer(arg)
+-- Busca de Jogadores (Nome, @r, @p)
+local function getTarget(arg)
 	if not arg then return nil end
-	local lowerArg = string.lower(arg)
+	arg = arg:lower()
+	local allPlayers = Players:GetPlayers()
 
-	if lowerArg == "@r" then
-		-- Jogador aleatório (exceto eu mesmo)
-		local otherPlayers = {}
-		for _, p in pairs(Players:GetPlayers()) do
-			if p ~= player then table.insert(otherPlayers, p) end
-		end
-		if #otherPlayers > 0 then
-			return otherPlayers[math.random(1, #otherPlayers)]
-		end
-		return nil
-
-	elseif lowerArg == "@p" then
-		-- Jogador mais próximo
+	if arg == "@r" then
+		return allPlayers[math.random(1, #allPlayers)]
+	elseif arg == "@p" then
 		local closest = nil
-		local minDist = math.huge
-		local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-		
-		if myRoot then
-			for _, p in pairs(Players:GetPlayers()) do
-				if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-					local dist = (p.Character.HumanoidRootPart.Position - myRoot.Position).Magnitude
-					if dist < minDist then
-						minDist = dist
-						closest = p
-					end
+		local dist = math.huge
+		for _, p in pairs(allPlayers) do
+			if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+				local d = (p.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+				if d < dist then
+					dist = d
+					closest = p
 				end
 			end
 		end
 		return closest
-
 	else
-		-- Busca por nome
-		for _, p in pairs(Players:GetPlayers()) do
-			if string.sub(string.lower(p.Name), 1, #lowerArg) == lowerArg or 
-			   string.sub(string.lower(p.DisplayName), 1, #lowerArg) == lowerArg then
+		for _, p in pairs(allPlayers) do
+			if p.Name:lower():sub(1, #arg) == arg then
 				return p
 			end
 		end
@@ -89,134 +71,115 @@ local function getTargetPlayer(arg)
 	return nil
 end
 
--- Função para suavizar materiais e texturas
-local function applyLowPerformance(state)
-	if state then
-		Settings.Rendering.QualityLevel = Enum.QualityLevel.Level01
-		Lighting.GlobalShadows = false
-	else
-		Settings.Rendering.QualityLevel = Enum.QualityLevel.Automatic
-		Lighting.GlobalShadows = true
+-- Comando +Rfog (Loop de Limpeza)
+RunService.Heartbeat:Connect(function()
+	if rfogActive then
+		Lighting.FogStart = 100000
+		Lighting.FogEnd = 100000
+		Lighting.ClockTime = DEFAULT_TIME
+		Lighting.Brightness = DEFAULT_BRIGHTNESS
 	end
+end)
 
-	task.spawn(function()
-		local count = 0
-		for _, obj in pairs(workspace:GetDescendants()) do
-			if obj:IsA("BasePart") then
-				count = count + 1
-				obj.Material = state and Enum.Material.SmoothPlastic or Enum.Material.Plastic
-				if count % 100 == 0 then task.wait() end
+-- Comando +Nocd (Loop de Reposição)
+task.spawn(function()
+	while true do
+		if nocdActive and player.Character then
+			-- Itera sobre as ferramentas no inventário e as equipadas
+			local tools = player.Backpack:GetChildren()
+			local equipped = player.Character:FindFirstChildOfClass("Tool")
+			if equipped then table.insert(tools, equipped) end
+
+			for _, tool in pairs(tools) do
+				if tool:IsA("Tool") then
+					tool.Enabled = true
+				end
 			end
 		end
-	end)
-end
+		-- O delay diminui conforme a porcentagem (2% = espera menor, etc)
+		local delay = nocdValue > 0 and (1 / (nocdValue * 2)) or 0.1
+		task.wait(math.clamp(delay, 0.01, 1))
+	end
+end)
 
-local function clearAtmosphere()
-	Lighting.FogStart = 0
-end
+--- === LÓGICA DE COMANDOS === ---
 
 local function applySmoothChange(props)
-	if rfogActive then return end -- Bloqueia mudanças se RFog estiver ativo
+	if rfogActive then return end
 	local info = TweenInfo.new(TRANSITION_TIME, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-	local tween = TweenService:Create(Lighting, info, props)
-	tween:Play()
-	return tween
+	TweenService:Create(Lighting, info, props):Play()
 end
 
-local function applySaturation(level)
-	local target = 0
-	if level == "baixo" then target = -0.6
-	elseif level == "medio" then target = 0
-	elseif level == "alto" then target = 0.5 end
-	TweenService:Create(colorCorrection, TweenInfo.new(TRANSITION_TIME, Enum.EasingStyle.Sine), {Saturation = target}):Play()
-end
+player.Chatted:Connect(function(msg)
+	local args = msg:lower():split(" ")
+	local cmd = args[1]
 
--- Pulsação
-local function stopPulse()
-	pulseActive = false
-	if pulseConn then pulseConn:Cancel() pulseConn = nil end
-end
+	if cmd == "/?" then
+		screenGui.Enabled = true
+		notify("Menu de Ajuda Aberto")
 
-local function startPulse()
-	stopPulse()
-	pulseActive = true
-	task.spawn(function()
-		while pulseActive do
-			local t1 = TweenService:Create(Lighting, TweenInfo.new(4, Enum.EasingStyle.Sine), {FogEnd = 300, FogColor = Color3.fromRGB(20, 20, 20)})
-			t1:Play() t1.Completed:Wait()
-			if not pulseActive then break end
-			local t2 = TweenService:Create(Lighting, TweenInfo.new(4, Enum.EasingStyle.Sine), {FogEnd = 600, FogColor = Color3.fromRGB(50, 50, 50)})
-			t2:Play() t2.Completed:Wait()
+	elseif cmd == "+rfog" then
+		rfogActive = not rfogActive
+		notify("Rfog: " .. (rfogActive and "ATIVADO" or "DESATIVADO"))
+
+	elseif cmd == "+explode" then
+		local target = getTarget(args[2])
+		if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+			local exp = Instance.new("Explosion")
+			exp.Position = target.Character.HumanoidRootPart.Position
+			exp.Parent = workspace
+			notify("Explodindo: " .. target.Name)
+		else
+			notify("Alvo não encontrado.")
 		end
-	end)
-end
 
--- Lógica RFOG (Remove Fog Permanente)
-local function toggleRfog(state)
-	if rfogConnection then rfogConnection:Disconnect() rfogConnection = nil end
-	rfogActive = state
-	
-	if state then
-		stopPulse() -- Desliga pulsação se houver
-		-- Usa RenderStepped para forçar a iluminação a cada frame (útil contra scripts de mapa)
-		rfogConnection = RunService.RenderStepped:Connect(function()
-			Lighting.FogStart = 100000
-			Lighting.FogEnd = 100000
-			Lighting.Brightness = 2
-			Lighting.GlobalShadows = false
-			Lighting.ClockTime = 12 -- Força meio-dia
-			Lighting.OutdoorAmbient = Color3.fromRGB(120, 120, 120)
-		end)
-	else
-		-- Restaura
+	elseif cmd == "+nocd" then
+		local val = tonumber(args[2])
+		if val then
+			nocdValue = val
+			nocdActive = val > 0
+			notify("NoCD: " .. val .. "%")
+		end
+
+	elseif cmd == "/low" then
+		local state = (args[2] == "on")
+		Settings.Rendering.QualityLevel = state and Enum.QualityLevel.Level01 or Enum.QualityLevel.Automatic
+		Lighting.GlobalShadows = not state
+		notify("Otimização: " .. (state and "ON" or "OFF"))
+
+	elseif cmd == "+foc" then
+		local val = tonumber(args[2])
+		if val then
+			rfogActive = false
+			local targetEnd = 4000 - (val * 38.8)
+			applySmoothChange({FogEnd = targetEnd})
+			notify("Neblina: " .. val .. "%")
+		end
+
+	elseif cmd == ".rs" then
+		rfogActive = false
+		nocdActive = false
 		applySmoothChange({
 			FogStart = DEFAULT_FOG_START,
 			FogEnd = DEFAULT_FOG_END,
 			Brightness = DEFAULT_BRIGHTNESS,
 			ClockTime = DEFAULT_TIME
 		})
+		notify("Sistema Resetado")
 	end
-end
+end)
 
--- Lógica NoCD (Sem Cooldown)
-local function toggleNocd(percentage)
-	if nocdConnection then nocdConnection:Disconnect() nocdConnection = nil end
-	
-	if percentage > 0 then
-		nocdActive = true
-		-- Calcula velocidade: 100% = muito rápido, 1% = lento
-		-- Inverte: Quanto maior %, menor o tempo de espera
-		local waitTime = math.clamp((100 - percentage) / 100, 0, 1) * 0.5
-		
-		nocdConnection = task.spawn(function()
-			while nocdActive do
-				-- Inventário
-				for _, tool in pairs(player.Backpack:GetChildren()) do
-					if tool:IsA("Tool") then tool.Enabled = true end
-				end
-				-- Personagem (item equipado)
-				if player.Character then
-					local tool = player.Character:FindFirstChildOfClass("Tool")
-					if tool then tool.Enabled = true end
-				end
-				task.wait(waitTime)
-			end
-		end)
-	else
-		nocdActive = false
-	end
-end
+--- === INTERFACE (GUI) === ---
 
--- Interface
 local screenGui = Instance.new("ScreenGui", player.PlayerGui)
 screenGui.Name = "FogUI"
 screenGui.ResetOnSpawn = false
 screenGui.Enabled = false
 
 local frame = Instance.new("Frame", screenGui)
-frame.Size = UDim2.new(0, 380, 0, 380) -- Aumentado para caber texto
-frame.Position = UDim2.new(0.5, -190, 0.5, -190)
-frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+frame.Size = UDim2.new(0, 360, 0, 360)
+frame.Position = UDim2.new(0.5, -180, 0.5, -180)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Instance.new("UICorner", frame)
 
 local list = Instance.new("TextLabel", frame)
@@ -227,26 +190,22 @@ list.TextColor3 = Color3.new(1, 1, 1)
 list.TextSize = 14
 list.Font = Enum.Font.SourceSansBold
 list.TextXAlignment = Enum.TextXAlignment.Left
-list.YAlignment = Enum.TextYAlignment.Top
 list.Text = [[
-COMANDOS DO SISTEMA:
+LISTA DE COMANDOS ATUAIS:
 
-[ /? ] - Menu de ajuda
 [ .rs ] - Resetar tudo ao padrão
-
-AMBIENTE:
+[ /low on/off ] - Otimização de FPS
 [ +foc 0-100 ] - Intensidade da neblina
+
+NOVAS FUNÇÕES:
+[ +Rfog ] - Remove neblinas e trava iluminação
+[ +Explode nome/@r/@p ] - Explode o alvo
+[ +Nocd 1-100 ] - Remove delay das ferramentas
+   (Ex: +Nocd 2 -> Carrega 2% mais rápido)
+
 [ /wday baixa/medio/alto ] - Saturação
-[ /low on/off ] - Otimização FPS
-[ +Rfog ] - Remove neblina e tranca iluminação
 
-AÇÕES:
-[ +Explode alvo ] - Explode jogador
-  > Alvos: Nome, @r (random), @p (perto)
-[ +Nocd 1-100 ] - Remove Cooldown (Speed %)
-  > Use 0 para desligar.
-
-Clique fora para fechar.
+Clique fora para fechar o menu.
 ]]
 
 local bgClose = Instance.new("TextButton", screenGui)
@@ -256,116 +215,4 @@ bgClose.Text = ""
 bgClose.ZIndex = 0
 bgClose.Activated:Connect(function() screenGui.Enabled = false end)
 
--- Comandos
-player.Chatted:Connect(function(msg)
-	local args = string.split(string.lower(msg), " ")
-	
-	if args[1] == "/?" then
-		screenGui.Enabled = true
-		notify("Interface aberta")
-
-	elseif args[1] == "/low" then
-		if args[2] == "on" then
-			applyLowPerformance(true)
-			notify("Otimização Ligada")
-		elseif args[2] == "off" then
-			applyLowPerformance(false)
-			notify("Otimização Desligada")
-		end
-
-	elseif args[1] == "/wday" then
-		local level = args[2]
-		if level == "baixa" or level == "medio" or level == "alto" then
-			applySaturation(level)
-			notify("Saturação definida: " .. level)
-			if not rfogActive then
-				if level == "baixa" then applySmoothChange({Brightness = 1, ClockTime = 16})
-				elseif level == "alto" then applySmoothChange({Brightness = 2.5, ClockTime = 12})
-				else applySmoothChange({Brightness = DEFAULT_BRIGHTNESS, ClockTime = DEFAULT_TIME}) end
-			end
-		end
-
-	elseif args[1] == "+foc" then
-		local val = tonumber(args[2])
-		if val and val >= 0 and val <= 100 then
-			stopPulse()
-			toggleRfog(false) -- Desliga rfog se usar foc
-			clearAtmosphere()
-			if val == 0 then
-				applySmoothChange({FogEnd = 100000, FogColor = DEFAULT_COLOR})
-				notify("Horizonte limpo")
-			elseif val == 100 then
-				startPulse()
-				notify("Pulsação Ativada")
-			else
-				local targetEnd = 4000 - (val * 38.8)
-				local colorPower = math.clamp(200 - (val * 1.8), 30, 255)
-				applySmoothChange({FogEnd = targetEnd, FogColor = Color3.fromRGB(colorPower, colorPower, colorPower)})
-				notify("Horizonte: " .. val .. "%")
-			end
-		end
-
-	elseif args[1] == "+rfog" then
-		if rfogActive then
-			toggleRfog(false)
-			notify("RFog Desativado")
-		else
-			toggleRfog(true)
-			notify("RFog Ativado (Iluminação Trancada)")
-		end
-
-	elseif args[1] == "+explode" then
-		local targetName = args[2]
-		local targetPlayer = getTargetPlayer(targetName)
-		
-		if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-			local root = targetPlayer.Character.HumanoidRootPart
-			
-			-- Criação da explosão
-			local ex = Instance.new("Explosion")
-			ex.Position = root.Position
-			ex.BlastRadius = 10
-			ex.BlastPressure = 500000
-			ex.Parent = workspace
-			
-			notify("Explodindo: " .. targetPlayer.Name)
-		else
-			notify("Jogador não encontrado.")
-		end
-
-	elseif args[1] == "+nocd" then
-		local percentage = tonumber(args[2])
-		if percentage then
-			if percentage <= 0 then
-				toggleNocd(0)
-				notify("NoCooldown Desativado")
-			else
-				percentage = math.clamp(percentage, 1, 100)
-				toggleNocd(percentage)
-				notify("NoCooldown Ativo: " .. percentage .. "%")
-			end
-		else
-			notify("Use numero 1-100")
-		end
-
-	elseif args[1] == ".rs" then
-		stopPulse()
-		toggleRfog(false)
-		toggleNocd(0)
-		applySaturation("medio")
-		applySmoothChange({
-			FogStart = DEFAULT_FOG_START,
-			FogEnd = DEFAULT_FOG_END,
-			FogColor = DEFAULT_COLOR,
-			Brightness = DEFAULT_BRIGHTNESS,
-			ClockTime = DEFAULT_TIME
-		})
-		notify("Configurações Restauradas")
-	end
-end)
-
--- Inicialização
-clearAtmosphere()
-applyLowPerformance(true)
-applySaturation("medio")
-notify("Sistema Ativo - Digite /?")
+notify("Sistema Carregado. Digite /? para ajuda.")
