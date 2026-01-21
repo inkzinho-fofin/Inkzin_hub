@@ -1,58 +1,61 @@
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
-local StarterGui = game:GetService("StarterGui")
 local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
 local Settings = settings()
 
 local player = Players.LocalPlayer
+local mouse = player:GetMouse()
 
--- Configurações de ColorCorrection
+-- === CONFIGURAÇÕES INICIAIS === --
+
+-- Cria ou busca o efeito de correção de cor
 local colorCorrection = Lighting:FindFirstChild("WDayCorrection") or Instance.new("ColorCorrectionEffect", Lighting)
 colorCorrection.Name = "WDayCorrection"
 colorCorrection.Saturation = 0
 
--- Configurações Padrão
-local DEFAULT_FOG_START = 100
-local DEFAULT_FOG_END = 2000
-local DEFAULT_COLOR = Color3.fromRGB(180, 180, 180)
-local DEFAULT_BRIGHTNESS = 2
-local DEFAULT_TIME = 14
-local TRANSITION_TIME = 3
+-- Valores padrões para o Reset (.rs)
+local DEFAULT_FOG_START = Lighting.FogStart
+local DEFAULT_FOG_END = Lighting.FogEnd
+local DEFAULT_BRIGHTNESS = Lighting.Brightness
+local DEFAULT_CLOCK = Lighting.ClockTime
+local DEFAULT_AMBIENT = Lighting.Ambient
+local DEFAULT_OUTDOOR = Lighting.OutdoorAmbient
 
--- Variáveis de Controle
-local pulseActive = false
+-- Variáveis de controle
 local rfogActive = false
-local nocdActive = false
-local nocdValue = 0
 
---- === FUNÇÕES AUXILIARES === ---
+-- === FUNÇÕES AUXILIARES === --
 
-local function notify(msg)
-	task.spawn(function()
-		pcall(function()
-			StarterGui:SetCore("SendNotification", {
-				Title = "Sistema Ativo",
-				Text = msg,
-				Duration = 3
-			})
-		end)
+-- Envia mensagem apenas para o jogador no chat (CLIENTE)
+local function chatMessage(text, color)
+	pcall(function()
+		StarterGui:SetCore("ChatMakeSystemMessage", {
+			Text = text;
+			Color = color or Color3.fromRGB(0, 255, 255); -- Ciano padrão
+			Font = Enum.Font.SourceSansBold;
+			FontSize = Enum.FontSize.Size24;
+		})
 	end)
 end
 
--- Busca de Jogadores (Nome, @r, @p)
-local function getTarget(arg)
-	if not arg then return nil end
+-- Sistema avançado de busca de jogadores
+local function getTargets(arg)
+	local targets = {}
+	if not arg then return targets end
 	arg = arg:lower()
 	local allPlayers = Players:GetPlayers()
 
-	if arg == "@r" then
-		return allPlayers[math.random(1, #allPlayers)]
+	if arg == "@e" or arg == "all" then
+		return allPlayers
+	elseif arg == "@r" then
+		table.insert(targets, allPlayers[math.random(1, #allPlayers)])
 	elseif arg == "@p" then
 		local closest = nil
 		local dist = math.huge
 		for _, p in pairs(allPlayers) do
-			if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+			if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
 				local d = (p.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
 				if d < dist then
 					dist = d
@@ -60,159 +63,152 @@ local function getTarget(arg)
 				end
 			end
 		end
-		return closest
+		if closest then table.insert(targets, closest) end
 	else
+		-- Busca por nome parcial
 		for _, p in pairs(allPlayers) do
-			if p.Name:lower():sub(1, #arg) == arg then
-				return p
+			if p.Name:lower():sub(1, #arg) == arg or p.DisplayName:lower():sub(1, #arg) == arg then
+				table.insert(targets, p)
 			end
 		end
 	end
-	return nil
+	return targets
 end
 
--- Comando +Rfog (Loop de Limpeza)
-RunService.Heartbeat:Connect(function()
+-- === LOOP PRINCIPAL (+Rfog) === --
+RunService.RenderStepped:Connect(function()
 	if rfogActive then
 		Lighting.FogStart = 100000
 		Lighting.FogEnd = 100000
-		Lighting.ClockTime = DEFAULT_TIME
-		Lighting.Brightness = DEFAULT_BRIGHTNESS
+		Lighting.Brightness = 2
+		Lighting.ClockTime = 14
+		Lighting.GlobalShadows = false
 	end
 end)
 
--- Comando +Nocd (Loop de Reposição)
-task.spawn(function()
-	while true do
-		if nocdActive and player.Character then
-			-- Itera sobre as ferramentas no inventário e as equipadas
-			local tools = player.Backpack:GetChildren()
-			local equipped = player.Character:FindFirstChildOfClass("Tool")
-			if equipped then table.insert(tools, equipped) end
-
-			for _, tool in pairs(tools) do
-				if tool:IsA("Tool") then
-					tool.Enabled = true
-				end
-			end
-		end
-		-- O delay diminui conforme a porcentagem (2% = espera menor, etc)
-		local delay = nocdValue > 0 and (1 / (nocdValue * 2)) or 0.1
-		task.wait(math.clamp(delay, 0.01, 1))
-	end
-end)
-
---- === LÓGICA DE COMANDOS === ---
-
-local function applySmoothChange(props)
-	if rfogActive then return end
-	local info = TweenInfo.new(TRANSITION_TIME, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-	TweenService:Create(Lighting, info, props):Play()
-end
+-- === PROCESSAMENTO DE COMANDOS === --
 
 player.Chatted:Connect(function(msg)
-	local args = msg:lower():split(" ")
-	local cmd = args[1]
-
-	if cmd == "/?" then
-		screenGui.Enabled = true
-		notify("Menu de Ajuda Aberto")
-
-	elseif cmd == "+rfog" then
-		rfogActive = not rfogActive
-		notify("Rfog: " .. (rfogActive and "ATIVADO" or "DESATIVADO"))
-
-	elseif cmd == "+explode" then
-		local target = getTarget(args[2])
-		if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-			local exp = Instance.new("Explosion")
-			exp.Position = target.Character.HumanoidRootPart.Position
-			exp.Parent = workspace
-			notify("Explodindo: " .. target.Name)
-		else
-			notify("Alvo não encontrado.")
-		end
-
-	elseif cmd == "+nocd" then
-		local val = tonumber(args[2])
-		if val then
-			nocdValue = val
-			nocdActive = val > 0
-			notify("NoCD: " .. val .. "%")
-		end
-
-	elseif cmd == "/low" then
-		local state = (args[2] == "on")
-		Settings.Rendering.QualityLevel = state and Enum.QualityLevel.Level01 or Enum.QualityLevel.Automatic
-		Lighting.GlobalShadows = not state
-		notify("Otimização: " .. (state and "ON" or "OFF"))
-
-	elseif cmd == "+foc" then
-		local val = tonumber(args[2])
-		if val then
-			rfogActive = false
-			local targetEnd = 4000 - (val * 38.8)
-			applySmoothChange({FogEnd = targetEnd})
-			notify("Neblina: " .. val .. "%")
-		end
-
+	-- Separa o comando dos argumentos
+	local args = msg:split(" ")
+	local cmd = args[1]:lower()
+	
+	-- 1. HELP / AJUDA (.?)
+	if cmd == ".?" then
+		chatMessage("=== LISTA DE COMANDOS ===", Color3.fromRGB(255, 215, 0))
+		chatMessage("+Foc <1-100> : Controla neblina (1=Lento/Perto, 100=Rápido/Longe)", Color3.white)
+		chatMessage("/Wday <baixa/media/alta> : Saturação da tela", Color3.white)
+		chatMessage("+Rfog : Remove neblina e trava luz (Toggle)", Color3.white)
+		chatMessage("+Explode <nome/@p/@e/@r> : Explode alvo", Color3.white)
+		chatMessage("*Kick <nome> : Kicka o jogador", Color3.white)
+		chatMessage(".rs : Reinicia o script e luzes", Color3.fromRGB(255, 100, 100))
+	
+	-- 2. RESET (.rs)
 	elseif cmd == ".rs" then
 		rfogActive = false
-		nocdActive = false
-		applySmoothChange({
+		colorCorrection.Saturation = 0
+		
+		-- Retorna iluminação ao original suavemente
+		local tweenInfo = TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		TweenService:Create(Lighting, tweenInfo, {
 			FogStart = DEFAULT_FOG_START,
 			FogEnd = DEFAULT_FOG_END,
 			Brightness = DEFAULT_BRIGHTNESS,
-			ClockTime = DEFAULT_TIME
-		})
-		notify("Sistema Resetado")
+			ClockTime = DEFAULT_CLOCK,
+			Ambient = DEFAULT_AMBIENT,
+			OutdoorAmbient = DEFAULT_OUTDOOR
+		}):Play()
+		
+		chatMessage("[SYSTEM] Script reiniciado com sucesso.", Color3.fromRGB(0, 255, 0))
+
+	-- 3. REMOVE FOG (+Rfog)
+	elseif cmd == "+rfog" then
+		rfogActive = not rfogActive
+		if rfogActive then
+			chatMessage("⚡ Neblina Removida (Travada)", Color3.fromRGB(255, 255, 0))
+		else
+			chatMessage("☁️ Neblina Destravada", Color3.fromRGB(200, 200, 200))
+			Lighting.GlobalShadows = true
+		end
+
+	-- 4. FOG CONTROL (+Foc)
+	elseif cmd == "+foc" then
+		local val = tonumber(args[2])
+		if val then
+			rfogActive = false -- Desativa o Rfog para permitir a mudança
+			val = math.clamp(val, 1, 100)
+			
+			-- Lógica: 
+			-- Velocidade: 1 é lento (ex: 5s), 100 é rápido (ex: 0.5s)
+			-- Distância: 1 é perto (neblina densa), 100 é longe (visão limpa)
+			
+			local speedTime = 5 - ((val / 100) * 4.5) -- Mapeia de 5s até 0.5s
+			local targetDist = val * 50 -- Ex: 1 = 50 studs, 100 = 5000 studs
+			
+			local info = TweenInfo.new(speedTime, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+			TweenService:Create(Lighting, info, {FogEnd = targetDist, FogStart = 0}):Play()
+			
+			chatMessage("Fog ajustado: " .. val .. "% (Dist: " .. targetDist .. " | Tempo: " .. string.format("%.1f", speedTime) .. "s)")
+		end
+
+	-- 5. SATURATION (/Wday)
+	elseif cmd == "/wday" then
+		local mode = args[2] and args[2]:lower() or ""
+		
+		if mode == "baixa" or mode == "baixo" then
+			TweenService:Create(colorCorrection, TweenInfo.new(1), {Saturation = -1}):Play()
+			chatMessage("Saturação: Baixa (P&B)")
+			
+		elseif mode == "media" or mode == "medio" or mode == "padrão" or mode == "padrao" then
+			TweenService:Create(colorCorrection, TweenInfo.new(1), {Saturation = 0}):Play()
+			chatMessage("Saturação: Média (Padrão)")
+			
+		elseif mode == "alta" or mode == "alto" then
+			TweenService:Create(colorCorrection, TweenInfo.new(1), {Saturation = 0.8}):Play()
+			chatMessage("Saturação: Alta (Vívido)")
+		else
+			chatMessage("Uso: /Wday <baixa, media, alta>", Color3.fromRGB(255, 100, 100))
+		end
+
+	-- 6. EXPLODE (+Explode)
+	elseif cmd == "+explode" then
+		local targets = getTargets(args[2])
+		if #targets > 0 then
+			for _, target in pairs(targets) do
+				if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+					local exp = Instance.new("Explosion")
+					exp.Position = target.Character.HumanoidRootPart.Position
+					exp.BlastRadius = 10
+					exp.BlastPressure = 500000
+					exp.Parent = workspace
+					chatMessage("💥 BOOM: " .. target.Name, Color3.fromRGB(255, 50, 50))
+				end
+			end
+		else
+			chatMessage("Nenhum alvo encontrado para explosão.", Color3.fromRGB(255, 100, 100))
+		end
+
+	-- 7. KICK (*Kick)
+	elseif cmd == "*kick" then
+		local targetName = args[2]
+		local targetList = getTargets(targetName)
+		
+		-- Mensagem personalizada
+		local kickMsg = "Você foi expulso do servidor por " .. player.Name .. ". Você não pode retornar a este servidor."
+		
+		if #targetList > 0 then
+			for _, t in pairs(targetList) do
+				-- Tentativa de Kick (Nota: Em LocalScript só funciona em si mesmo, a menos que seja SS)
+				pcall(function()
+					t:Kick(kickMsg)
+				end)
+				chatMessage("Tentando expulsar: " .. t.Name, Color3.fromRGB(255, 0, 0))
+			end
+		else
+			chatMessage("Jogador não encontrado para Kick.", Color3.fromRGB(255, 100, 100))
+		end
 	end
 end)
 
---- === INTERFACE (GUI) === ---
-
-local screenGui = Instance.new("ScreenGui", player.PlayerGui)
-screenGui.Name = "FogUI"
-screenGui.ResetOnSpawn = false
-screenGui.Enabled = false
-
-local frame = Instance.new("Frame", screenGui)
-frame.Size = UDim2.new(0, 360, 0, 360)
-frame.Position = UDim2.new(0.5, -180, 0.5, -180)
-frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Instance.new("UICorner", frame)
-
-local list = Instance.new("TextLabel", frame)
-list.Size = UDim2.new(1, -20, 1, -20)
-list.Position = UDim2.new(0, 10, 0, 10)
-list.BackgroundTransparency = 1
-list.TextColor3 = Color3.new(1, 1, 1)
-list.TextSize = 14
-list.Font = Enum.Font.SourceSansBold
-list.TextXAlignment = Enum.TextXAlignment.Left
-list.Text = [[
-LISTA DE COMANDOS ATUAIS:
-
-[ .rs ] - Resetar tudo ao padrão
-[ /low on/off ] - Otimização de FPS
-[ +foc 0-100 ] - Intensidade da neblina
-
-NOVAS FUNÇÕES:
-[ +Rfog ] - Remove neblinas e trava iluminação
-[ +Explode nome/@r/@p ] - Explode o alvo
-[ +Nocd 1-100 ] - Remove delay das ferramentas
-   (Ex: +Nocd 2 -> Carrega 2% mais rápido)
-
-[ /wday baixa/medio/alto ] - Saturação
-
-Clique fora para fechar o menu.
-]]
-
-local bgClose = Instance.new("TextButton", screenGui)
-bgClose.Size = UDim2.new(1, 0, 1, 0)
-bgClose.BackgroundTransparency = 1
-bgClose.Text = ""
-bgClose.ZIndex = 0
-bgClose.Activated:Connect(function() screenGui.Enabled = false end)
-
-notify("Sistema Carregado. Digite /? para ajuda.")
+-- Mensagem de inicialização
+chatMessage("Script Carregado! Digite .? para ver os comandos.", Color3.fromRGB(100, 255, 100))
