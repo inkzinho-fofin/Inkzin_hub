@@ -8,14 +8,92 @@ local Settings = settings()
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
 
--- === CONFIGURAÇÕES INICIAIS === --
+-- === CONFIGURAÇÃO DA INTERFACE (MENSAGENS RÁPIDAS) === --
 
--- Cria ou busca o efeito de correção de cor
+-- Cria a ScreenGui para notificações
+local notifGui = Instance.new("ScreenGui")
+notifGui.Name = "QuickNotifyUI"
+notifGui.ResetOnSpawn = false -- Não some se morrer
+notifGui.Parent = player:WaitForChild("PlayerGui")
+
+local function notify(text, color)
+	-- Remove mensagem anterior se existir para não acumular
+	local oldFrame = notifGui:FindFirstChild("NotifyFrame")
+	if oldFrame then oldFrame:Destroy() end
+
+	-- Cria o Fundo da Mensagem (Frame)
+	local frame = Instance.new("Frame")
+	frame.Name = "NotifyFrame"
+	frame.Size = UDim2.new(0, 300, 0, 35) -- Tamanho pequeno
+	frame.Position = UDim2.new(0.5, -150, 1, -80) -- Centralizado em baixo
+	frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	frame.BorderSizePixel = 0
+	frame.BackgroundTransparency = 0.1
+	frame.Parent = notifGui
+
+	-- Arredondar cantos
+	local uiCorner = Instance.new("UICorner")
+	uiCorner.CornerRadius = UDim.new(0, 6)
+	uiCorner.Parent = frame
+
+	-- Botão X (Esquerda)
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 35, 1, 0)
+	closeBtn.Position = UDim2.new(0, 0, 0, 0)
+	closeBtn.BackgroundTransparency = 1
+	closeBtn.Text = "X"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 80, 80) -- Vermelho claro
+	closeBtn.TextSize = 16
+	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.Parent = frame
+
+	-- Texto da Mensagem
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, -40, 1, 0)
+	label.Position = UDim2.new(0, 40, 0, 0)
+	label.BackgroundTransparency = 1
+	label.Text = text
+	label.TextColor3 = color or Color3.fromRGB(255, 255, 255)
+	label.TextSize = 14
+	label.Font = Enum.Font.Gotham
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = frame
+
+	-- Função de fechar ao clicar no X
+	closeBtn.MouseButton1Click:Connect(function()
+		if frame then frame:Destroy() end
+	end)
+
+	-- Animação simples de entrada (Fade in + Slide Up)
+	frame.Position = UDim2.new(0.5, -150, 1, -60)
+	frame.BackgroundTransparency = 1
+	label.TextTransparency = 1
+	closeBtn.TextTransparency = 1
+
+	local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	TweenService:Create(frame, tweenInfo, {Position = UDim2.new(0.5, -150, 1, -80), BackgroundTransparency = 0.1}):Play()
+	TweenService:Create(label, tweenInfo, {TextTransparency = 0}):Play()
+	TweenService:Create(closeBtn, tweenInfo, {TextTransparency = 0}):Play()
+
+	-- Auto deletar após 5 segundos se não clicar
+	task.delay(5, function()
+		if frame and frame.Parent then
+			-- Animação de saída
+			TweenService:Create(frame, tweenInfo, {BackgroundTransparency = 1, Position = UDim2.new(0.5, -150, 1, -60)}):Play()
+			TweenService:Create(label, tweenInfo, {TextTransparency = 1}):Play()
+			TweenService:Create(closeBtn, tweenInfo, {TextTransparency = 1}):Play()
+			task.wait(0.3)
+			if frame then frame:Destroy() end
+		end
+	end)
+end
+
+-- === CONFIGURAÇÕES DO SCRIPT === --
+
 local colorCorrection = Lighting:FindFirstChild("WDayCorrection") or Instance.new("ColorCorrectionEffect", Lighting)
 colorCorrection.Name = "WDayCorrection"
 colorCorrection.Saturation = 0
 
--- Valores padrões para o Reset (.rs)
 local DEFAULT_FOG_START = Lighting.FogStart
 local DEFAULT_FOG_END = Lighting.FogEnd
 local DEFAULT_BRIGHTNESS = Lighting.Brightness
@@ -23,24 +101,10 @@ local DEFAULT_CLOCK = Lighting.ClockTime
 local DEFAULT_AMBIENT = Lighting.Ambient
 local DEFAULT_OUTDOOR = Lighting.OutdoorAmbient
 
--- Variáveis de controle
 local rfogActive = false
 
 -- === FUNÇÕES AUXILIARES === --
 
--- Envia mensagem apenas para o jogador no chat (CLIENTE)
-local function chatMessage(text, color)
-	pcall(function()
-		StarterGui:SetCore("ChatMakeSystemMessage", {
-			Text = text;
-			Color = color or Color3.fromRGB(0, 255, 255); -- Ciano padrão
-			Font = Enum.Font.SourceSansBold;
-			FontSize = Enum.FontSize.Size24;
-		})
-	end)
-end
-
--- Sistema avançado de busca de jogadores
 local function getTargets(arg)
 	local targets = {}
 	if not arg then return targets end
@@ -65,7 +129,6 @@ local function getTargets(arg)
 		end
 		if closest then table.insert(targets, closest) end
 	else
-		-- Busca por nome parcial
 		for _, p in pairs(allPlayers) do
 			if p.Name:lower():sub(1, #arg) == arg or p.DisplayName:lower():sub(1, #arg) == arg then
 				table.insert(targets, p)
@@ -89,26 +152,18 @@ end)
 -- === PROCESSAMENTO DE COMANDOS === --
 
 player.Chatted:Connect(function(msg)
-	-- Separa o comando dos argumentos
 	local args = msg:split(" ")
 	local cmd = args[1]:lower()
 	
 	-- 1. HELP / AJUDA (.?)
 	if cmd == ".?" then
-		chatMessage("=== LISTA DE COMANDOS ===", Color3.fromRGB(255, 215, 0))
-		chatMessage("+Foc <1-100> : Controla neblina (1=Lento/Perto, 100=Rápido/Longe)", Color3.white)
-		chatMessage("/Wday <baixa/media/alta> : Saturação da tela", Color3.white)
-		chatMessage("+Rfog : Remove neblina e trava luz (Toggle)", Color3.white)
-		chatMessage("+Explode <nome/@p/@e/@r> : Explode alvo", Color3.white)
-		chatMessage("*Kick <nome> : Kicka o jogador", Color3.white)
-		chatMessage(".rs : Reinicia o script e luzes", Color3.fromRGB(255, 100, 100))
+		notify("Comandos: .rs, +foc, /wday, +rfog, +explode, *kick", Color3.fromRGB(255, 215, 0))
 	
 	-- 2. RESET (.rs)
 	elseif cmd == ".rs" then
 		rfogActive = false
 		colorCorrection.Saturation = 0
 		
-		-- Retorna iluminação ao original suavemente
 		local tweenInfo = TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 		TweenService:Create(Lighting, tweenInfo, {
 			FogStart = DEFAULT_FOG_START,
@@ -119,15 +174,15 @@ player.Chatted:Connect(function(msg)
 			OutdoorAmbient = DEFAULT_OUTDOOR
 		}):Play()
 		
-		chatMessage("[SYSTEM] Script reiniciado com sucesso.", Color3.fromRGB(0, 255, 0))
+		notify("Sistema reiniciado com sucesso.", Color3.fromRGB(100, 255, 100))
 
 	-- 3. REMOVE FOG (+Rfog)
 	elseif cmd == "+rfog" then
 		rfogActive = not rfogActive
 		if rfogActive then
-			chatMessage("⚡ Neblina Removida (Travada)", Color3.fromRGB(255, 255, 0))
+			notify("⚡ Neblina Removida (Travada)", Color3.fromRGB(255, 255, 100))
 		else
-			chatMessage("☁️ Neblina Destravada", Color3.fromRGB(200, 200, 200))
+			notify("☁️ Neblina Destravada", Color3.fromRGB(200, 200, 200))
 			Lighting.GlobalShadows = true
 		end
 
@@ -135,20 +190,16 @@ player.Chatted:Connect(function(msg)
 	elseif cmd == "+foc" then
 		local val = tonumber(args[2])
 		if val then
-			rfogActive = false -- Desativa o Rfog para permitir a mudança
+			rfogActive = false 
 			val = math.clamp(val, 1, 100)
 			
-			-- Lógica: 
-			-- Velocidade: 1 é lento (ex: 5s), 100 é rápido (ex: 0.5s)
-			-- Distância: 1 é perto (neblina densa), 100 é longe (visão limpa)
-			
-			local speedTime = 5 - ((val / 100) * 4.5) -- Mapeia de 5s até 0.5s
-			local targetDist = val * 50 -- Ex: 1 = 50 studs, 100 = 5000 studs
+			local speedTime = 5 - ((val / 100) * 4.5)
+			local targetDist = val * 50 
 			
 			local info = TweenInfo.new(speedTime, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 			TweenService:Create(Lighting, info, {FogEnd = targetDist, FogStart = 0}):Play()
 			
-			chatMessage("Fog ajustado: " .. val .. "% (Dist: " .. targetDist .. " | Tempo: " .. string.format("%.1f", speedTime) .. "s)")
+			notify("Fog: " .. val .. "% (Dist: " .. targetDist .. ")", Color3.white)
 		end
 
 	-- 5. SATURATION (/Wday)
@@ -157,17 +208,17 @@ player.Chatted:Connect(function(msg)
 		
 		if mode == "baixa" or mode == "baixo" then
 			TweenService:Create(colorCorrection, TweenInfo.new(1), {Saturation = -1}):Play()
-			chatMessage("Saturação: Baixa (P&B)")
+			notify("Saturação: Baixa (P&B)", Color3.white)
 			
-		elseif mode == "media" or mode == "medio" or mode == "padrão" or mode == "padrao" then
+		elseif mode == "media" or mode == "medio" or mode == "padrão" then
 			TweenService:Create(colorCorrection, TweenInfo.new(1), {Saturation = 0}):Play()
-			chatMessage("Saturação: Média (Padrão)")
+			notify("Saturação: Padrão", Color3.white)
 			
 		elseif mode == "alta" or mode == "alto" then
 			TweenService:Create(colorCorrection, TweenInfo.new(1), {Saturation = 0.8}):Play()
-			chatMessage("Saturação: Alta (Vívido)")
+			notify("Saturação: Alta (Vívido)", Color3.white)
 		else
-			chatMessage("Uso: /Wday <baixa, media, alta>", Color3.fromRGB(255, 100, 100))
+			notify("Uso: /Wday <baixa, media, alta>", Color3.fromRGB(255, 100, 100))
 		end
 
 	-- 6. EXPLODE (+Explode)
@@ -181,34 +232,29 @@ player.Chatted:Connect(function(msg)
 					exp.BlastRadius = 10
 					exp.BlastPressure = 500000
 					exp.Parent = workspace
-					chatMessage("💥 BOOM: " .. target.Name, Color3.fromRGB(255, 50, 50))
+					notify("💥 BOOM: " .. target.Name, Color3.fromRGB(255, 80, 80))
 				end
 			end
 		else
-			chatMessage("Nenhum alvo encontrado para explosão.", Color3.fromRGB(255, 100, 100))
+			notify("Alvo não encontrado.", Color3.fromRGB(255, 100, 100))
 		end
 
 	-- 7. KICK (*Kick)
 	elseif cmd == "*kick" then
 		local targetName = args[2]
 		local targetList = getTargets(targetName)
-		
-		-- Mensagem personalizada
-		local kickMsg = "Você foi expulso do servidor por " .. player.Name .. ". Você não pode retornar a este servidor."
+		local kickMsg = "Você foi expulso do servidor por " .. player.Name .. "."
 		
 		if #targetList > 0 then
 			for _, t in pairs(targetList) do
-				-- Tentativa de Kick (Nota: Em LocalScript só funciona em si mesmo, a menos que seja SS)
-				pcall(function()
-					t:Kick(kickMsg)
-				end)
-				chatMessage("Tentando expulsar: " .. t.Name, Color3.fromRGB(255, 0, 0))
+				pcall(function() t:Kick(kickMsg) end)
+				notify("Kickando: " .. t.Name, Color3.fromRGB(255, 50, 50))
 			end
 		else
-			chatMessage("Jogador não encontrado para Kick.", Color3.fromRGB(255, 100, 100))
+			notify("Jogador não encontrado.", Color3.fromRGB(255, 100, 100))
 		end
 	end
 end)
 
--- Mensagem de inicialização
-chatMessage("Script Carregado! Digite .? para ver os comandos.", Color3.fromRGB(100, 255, 100))
+-- Notificação Inicial
+notify("Script Carregado! Digite .?", Color3.fromRGB(100, 255, 100))
