@@ -1,5 +1,6 @@
---// Flow Engine v20.12 - Ultimate Hunter Sync (Anchor Logic Final)
+--// Flow Engine v20.12 - Ultimate Hunter Sync (Anchor Logic Final - LIMITADA)
 --// Criador: Hatsune_inkyt | Seleção Global + Trava na Âncora Visual
+--// Atualização: Limite de offset (X:20, Y:15) para estabilidade
 --// Comando para destruir: .0 no chat
 
 local Players = game:GetService("Players")
@@ -193,11 +194,27 @@ RunService.RenderStepped:Connect(function()
     local dynamicColor = isRGB and Color3.fromHSV(tick() % 5 / 5, 1, 1) or fovColor
     uiStroke.Color = dynamicColor; updateAllGlow()
 
-    -- 1. Controle da Posição do FOV (Arrastar com mouse)
+    -- 1. Controle da Posição do FOV (Arrastar com mouse COM LIMITES)
     if freeModeEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
         local mPos = Vector2.new(mouse.X, mouse.Y + 36)
+        
+        -- Verifica se está tentando arrastar (Detecta clique próximo ou já arrastando)
         if (mPos - fovPosition).Magnitude < 100 or draggingFov then 
-            draggingFov = true; fovPosition = mPos 
+            draggingFov = true
+            
+            -- LÓGICA DE CLAMP (Limite seguro para não quebrar a mira)
+            local centerScreen = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
+            
+            -- Calcula a distância que o mouse está do centro
+            local desiredOffsetX = mPos.X - centerScreen.X
+            local desiredOffsetY = mPos.Y - centerScreen.Y
+            
+            -- Aplica o limite estrito: Apenas 20px no X e 15px no Y
+            local clampedX = math.clamp(desiredOffsetX, -20, 20)
+            local clampedY = math.clamp(desiredOffsetY, -15, 15)
+            
+            -- Define a posição final com os limites aplicados
+            fovPosition = centerScreen + Vector2.new(clampedX, clampedY)
         end
     else 
         draggingFov = false 
@@ -240,18 +257,12 @@ RunService.RenderStepped:Connect(function()
         local target = nil
         
         -- 3. SELEÇÃO DE ALVO (GLOBAL - DENTRO E FORA DO FOV)
-        -- Usamos Magnitude (Distância 3D) em vez de Posição do Mouse
-        -- Isso garante que ele pegue qualquer um no raio de ação, mesmo se estiver fora do desenho
         if lockedPlayer == "Todos" then
             local nearestDist = math.huge
             for _, p in pairs(Players:GetPlayers()) do
                 if p ~= player and p.Character and p.Character:FindFirstChild(targetPart) and p.Character.Humanoid.Health > 0 then
                     if teamCheck and p.Team == player.Team then continue end
-                    
-                    -- AQUI É O SEGREDO: Distância Física, não de tela.
                     local dist = (p.Character[targetPart].Position - player.Character.PrimaryPart.Position).Magnitude
-                    
-                    -- Se quiser limitar a distância máxima de perseguição (ex: 500 studs), adicione: "and dist < 500"
                     if dist < nearestDist then 
                         nearestDist = dist
                         target = p.Character[targetPart] 
@@ -264,23 +275,16 @@ RunService.RenderStepped:Connect(function()
 
         -- 4. APLICAÇÃO DA MIRA (FIXA NO CENTRO DO FOV DESENHADO)
         if target then
-            -- Passo A: Descobre onde a câmera tem que olhar para o alvo estar no CENTRO da tela
             local lookAtCFrame = CFrame.new(camera.CFrame.Position, target.Position)
-            
-            -- Passo B: Calcula a diferença entre o Centro da Tela e onde desenhamos o FOV
             local viewport = camera.ViewportSize
             local center = Vector2.new(viewport.X/2, viewport.Y/2)
             
-            -- Distância em pixels que queremos "enganar" a câmera
+            -- Com o limite de 20/15 aplicado acima, dx e dy nunca serão grandes o suficiente para bugar a mira
             local dx = fovPosition.X - center.X
             local dy = fovPosition.Y - center.Y
             
-            -- Ajuste de sensibilidade baseado no FOV atual da câmera para precisão
             local sensX = (camera.FieldOfView / viewport.Y)
             local sensY = sensX
-            
-            -- Passo C: Rotaciona a câmera para compensar a posição do desenho.
-            -- Se desenhamos o FOV na esquerda, viramos a câmera para a direita para alinhar.
             local offsetRotation = CFrame.Angles(math.rad(dy * sensY * 0.85), math.rad(-dx * sensX * 0.85), 0)
             
             camera.CFrame = lookAtCFrame * offsetRotation
