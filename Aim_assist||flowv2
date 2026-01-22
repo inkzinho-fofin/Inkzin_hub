@@ -1,5 +1,6 @@
---// Flow Engine v20.10 - Ultimate Hunter Sync (RGB Edition)
---// Criador: Hatsune_inkyt | Comando para destruir: .0 no chat
+--// Flow Engine v20.12 - Ultimate Hunter Sync (Anchor Logic Final)
+--// Criador: Hatsune_inkyt | Seleção Global + Trava na Âncora Visual
+--// Comando para destruir: .0 no chat
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -22,7 +23,7 @@ local isRGB = true
 local targetPart = "Head"
 local lockedPlayer = "Todos"
 
--- Variáveis do Modo Livre
+-- Variáveis do Modo Livre (Âncora)
 local freeModeEnabled = false
 local fovPosition = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
 local draggingFov = false
@@ -71,7 +72,7 @@ local uiStroke = Instance.new("UIStroke", mainFrame); uiStroke.Thickness = 3; ui
 
 local header = Instance.new("Frame", mainFrame); header.Size = UDim2.new(1, 0, 0, 40); header.BackgroundColor3 = Color3.fromRGB(0, 0, 0); header.BorderSizePixel = 0
 Instance.new("UICorner", header).CornerRadius = UDim.new(0, 10)
-local title = Instance.new("TextLabel", header); title.Size = UDim2.new(1, 0, 1, 0); title.BackgroundTransparency = 1; title.Text = "FLOW-assist | Hatsune_inkyt"; title.TextColor3 = Color3.new(1, 1, 1); title.Font = "GothamBold"; title.TextSize = 16
+local title = Instance.new("TextLabel", header); title.Size = UDim2.new(1, 0, 1, 0); title.BackgroundTransparency = 1; title.Text = "FLOW-aim-assist | Hatsune_inkyt"; title.TextColor3 = Color3.new(1, 1, 1); title.Font = "GothamBold"; title.TextSize = 16
 
 local sidebar = Instance.new("Frame", mainFrame); sidebar.Size = UDim2.new(0, 100, 1, -40); sidebar.Position = UDim2.new(0, 0, 0, 40); sidebar.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
 Instance.new("UIListLayout", sidebar).HorizontalAlignment = "Center"
@@ -112,11 +113,11 @@ end
 
 -- ABA INÍCIO
 local lobbySec = addSection(inicioTab, "LOBBY")
-local aimBtn = Instance.new("TextButton", lobbySec); aimBtn.Size = UDim2.new(1,0,0,30); aimBtn.Text = "Aimbot Status"; aimBtn.BackgroundColor3 = Color3.fromRGB(30,30,50); Instance.new("UICorner", aimBtn)
+local aimBtn = Instance.new("TextButton", lobbySec); aimBtn.Size = UDim2.new(1,0,0,30); aimBtn.Text = "Aim-assist Status"; aimBtn.BackgroundColor3 = Color3.fromRGB(30,30,50); Instance.new("UICorner", aimBtn)
 table.insert(uiElements, {Instance = aimBtn, Type = "Aimbot"})
 aimBtn.Activated:Connect(function() aimbotEnabled = not aimbotEnabled updateAllGlow() end)
 
-local teamBtn = Instance.new("TextButton", lobbySec); teamBtn.Size = UDim2.new(1,0,0,30); teamBtn.Text = "Team Check"; teamBtn.BackgroundColor3 = Color3.fromRGB(30,30,50); Instance.new("UICorner", teamBtn)
+local teamBtn = Instance.new("TextButton", lobbySec); teamBtn.Size = UDim2.new(1,0,0,30); teamBtn.Text = "verificar time"; teamBtn.BackgroundColor3 = Color3.fromRGB(30,30,50); Instance.new("UICorner", teamBtn)
 local tStr = Instance.new("UIStroke", teamBtn); tStr.Thickness = 2
 table.insert(uiElements, {Instance = teamBtn, Stroke = tStr, Type = "Team"})
 teamBtn.Activated:Connect(function() teamCheck = not teamCheck updateAllGlow() end)
@@ -125,7 +126,7 @@ local playerListSec = addSection(inicioTab, "JOGADORES")
 local function updatePlayerList()
     for i = #uiElements, 1, -1 do if uiElements[i].Type == "Player" then table.remove(uiElements, i) end end
     playerListSec:ClearAllChildren(); Instance.new("UIListLayout", playerListSec)
-    local allBtn = Instance.new("TextButton", playerListSec); allBtn.Size = UDim2.new(1,0,0,25); allBtn.Text = "--- TODOS (GLOBAL) ---"; allBtn.BackgroundTransparency = 1; allBtn.Font = "GothamBold"
+    local allBtn = Instance.new("TextButton", playerListSec); allBtn.Size = UDim2.new(1,0,0,25); allBtn.Text = "--- TODOS  ---"; allBtn.BackgroundTransparency = 1; allBtn.Font = "GothamBold"
     table.insert(uiElements, {Instance = allBtn, Type = "Player", Player = "Todos"})
     allBtn.Activated:Connect(function() lockedPlayer = "Todos" updateAllGlow() end)
     for _, p in pairs(Players:GetPlayers()) do
@@ -186,22 +187,30 @@ for name, color in pairs(creativeColors) do
     b.Activated:Connect(function() isRGB = false fovColor = color updateAllGlow() end)
 end
 
--- RENDER LOOP
+-- RENDER LOOP (LÓGICA ATUALIZADA - SELEÇÃO GLOBAL + ÂNCORA VISUAL)
 RunService.RenderStepped:Connect(function()
     if not scriptActive then return end
     local dynamicColor = isRGB and Color3.fromHSV(tick() % 5 / 5, 1, 1) or fovColor
     uiStroke.Color = dynamicColor; updateAllGlow()
 
+    -- 1. Controle da Posição do FOV (Arrastar com mouse)
     if freeModeEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
         local mPos = Vector2.new(mouse.X, mouse.Y + 36)
-        if (mPos - fovPosition).Magnitude < 100 or draggingFov then draggingFov = true; fovPosition = mPos end
-    else draggingFov = false end
+        if (mPos - fovPosition).Magnitude < 100 or draggingFov then 
+            draggingFov = true; fovPosition = mPos 
+        end
+    else 
+        draggingFov = false 
+        if not freeModeEnabled then
+            fovPosition = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
+        end
+    end
 
-    -- Resetar visibilidade de todos os desenhos
+    -- Resetar visibilidade dos desenhos
     for _, d in pairs(drawings) do d.Visible = false end
 
     if aimbotEnabled then
-        -- Renderização do FOV Base
+        -- 2. Desenho do Visual (Onde o jogador será travado visualmente)
         if currentAimMode ~= "Invisível" then
             if fovShape == "Círculo" then
                 drawings.circle.Visible = true; drawings.circle.Position = fovPosition; drawings.circle.Radius = fovRadius; drawings.circle.Color = dynamicColor
@@ -217,12 +226,11 @@ RunService.RenderStepped:Connect(function()
             end
         end
 
-        -- LÓGICA DO MODO CAÇADOR (LINHAS PULSANTES)
+        -- Efeito Modo Caçador
         if currentAimMode == "Caçador" then
-            local pulse = math.abs(math.sin(tick() * 8)) * 15 -- Efeito de pulso
+            local pulse = math.abs(math.sin(tick() * 8)) * 15
             local size = fovRadius + pulse
             for i=1,4 do drawings["c"..i].Visible = true; drawings["c"..i].Color = dynamicColor end
-            -- Cantos externos pulsantes acompanhando o fovPosition
             drawings.c1.From = fovPosition + Vector2.new(-size, -size); drawings.c1.To = fovPosition + Vector2.new(-size + 20, -size + 20)
             drawings.c2.From = fovPosition + Vector2.new(size, -size); drawings.c2.To = fovPosition + Vector2.new(size - 20, -size + 20)
             drawings.c3.From = fovPosition + Vector2.new(-size, size); drawings.c3.To = fovPosition + Vector2.new(-size + 20, size - 20)
@@ -231,27 +239,51 @@ RunService.RenderStepped:Connect(function()
 
         local target = nil
         
-        -- LÓGICA "TODOS": Busca global
+        -- 3. SELEÇÃO DE ALVO (GLOBAL - DENTRO E FORA DO FOV)
+        -- Usamos Magnitude (Distância 3D) em vez de Posição do Mouse
+        -- Isso garante que ele pegue qualquer um no raio de ação, mesmo se estiver fora do desenho
         if lockedPlayer == "Todos" then
             local nearestDist = math.huge
             for _, p in pairs(Players:GetPlayers()) do
                 if p ~= player and p.Character and p.Character:FindFirstChild(targetPart) and p.Character.Humanoid.Health > 0 then
                     if teamCheck and p.Team == player.Team then continue end
+                    
+                    -- AQUI É O SEGREDO: Distância Física, não de tela.
                     local dist = (p.Character[targetPart].Position - player.Character.PrimaryPart.Position).Magnitude
-                    if dist < nearestDist then nearestDist = dist; target = p.Character[targetPart] end
+                    
+                    -- Se quiser limitar a distância máxima de perseguição (ex: 500 studs), adicione: "and dist < 500"
+                    if dist < nearestDist then 
+                        nearestDist = dist
+                        target = p.Character[targetPart] 
+                    end
                 end
             end
         elseif typeof(lockedPlayer) == "Instance" and lockedPlayer.Character then
             target = lockedPlayer.Character:FindFirstChild(targetPart)
         end
 
-        -- LÓGICA DE MIRA
+        -- 4. APLICAÇÃO DA MIRA (FIXA NO CENTRO DO FOV DESENHADO)
         if target then
-            local screenCenter = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
-            local offset = fovPosition - screenCenter
-            local lookAt = CFrame.new(camera.CFrame.Position, target.Position)
-            local offsetRotation = CFrame.Angles(math.rad(offset.Y / 10), math.rad(-offset.X / 10), 0)
-            camera.CFrame = lookAt * offsetRotation
+            -- Passo A: Descobre onde a câmera tem que olhar para o alvo estar no CENTRO da tela
+            local lookAtCFrame = CFrame.new(camera.CFrame.Position, target.Position)
+            
+            -- Passo B: Calcula a diferença entre o Centro da Tela e onde desenhamos o FOV
+            local viewport = camera.ViewportSize
+            local center = Vector2.new(viewport.X/2, viewport.Y/2)
+            
+            -- Distância em pixels que queremos "enganar" a câmera
+            local dx = fovPosition.X - center.X
+            local dy = fovPosition.Y - center.Y
+            
+            -- Ajuste de sensibilidade baseado no FOV atual da câmera para precisão
+            local sensX = (camera.FieldOfView / viewport.Y)
+            local sensY = sensX
+            
+            -- Passo C: Rotaciona a câmera para compensar a posição do desenho.
+            -- Se desenhamos o FOV na esquerda, viramos a câmera para a direita para alinhar.
+            local offsetRotation = CFrame.Angles(math.rad(dy * sensY * 0.85), math.rad(-dx * sensX * 0.85), 0)
+            
+            camera.CFrame = lookAtCFrame * offsetRotation
         end
     end
 end)
