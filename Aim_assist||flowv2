@@ -1,6 +1,6 @@
---// Flow Engine v20.12 - Ultimate Hunter Sync (Anchor Logic Final - LIMITADA)
---// Criador: Hatsune_inkyt | Seleção Global + Trava na Âncora Visual
---// Atualização: Limite de offset (X:20, Y:15) para estabilidade
+--// Flow Engine v20.13 - Ultimate Hunter Sync (Correção de FOV e Detecção)
+--// Criador: Hatsune_inkyt | Agora com detecção REAL baseada no visual
+--// Correção: A mira não reseta mais sozinha e foca apenas quem está DENTRO do desenho
 --// Comando para destruir: .0 no chat
 
 local Players = game:GetService("Players")
@@ -64,7 +64,7 @@ local drawings = {
 
 -- Interface Principal
 local screenGui = Instance.new("ScreenGui", player.PlayerGui)
-screenGui.Name = "Flow_V20_Final"; screenGui.ResetOnSpawn = false
+screenGui.Name = "Flow_V20_Fixed"; screenGui.ResetOnSpawn = false
 local mainFrame = Instance.new("Frame", screenGui)
 mainFrame.Size = UDim2.new(0, 420, 0, 420); mainFrame.Position = UDim2.new(0.5, -210, 0.5, -210)
 mainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15); mainFrame.Visible = false; mainFrame.BorderSizePixel = 0
@@ -149,9 +149,12 @@ end
 
 -- ABA CONFIG
 local controlSec = addSection(configTab, "CONTROLE")
-local freeModeBtn = Instance.new("TextButton", controlSec); freeModeBtn.Size = UDim2.new(1,0,0,30); freeModeBtn.Text = "Modo Livre (Mover FOV)"; freeModeBtn.BackgroundColor3 = Color3.fromRGB(30,30,50); Instance.new("UICorner", freeModeBtn)
+local freeModeBtn = Instance.new("TextButton", controlSec); freeModeBtn.Size = UDim2.new(1,0,0,30); freeModeBtn.Text = "Modo Livre (Arrastar)"; freeModeBtn.BackgroundColor3 = Color3.fromRGB(30,30,50); Instance.new("UICorner", freeModeBtn)
 table.insert(uiElements, {Instance = freeModeBtn, Type = "FreeMode"})
 freeModeBtn.Activated:Connect(function() freeModeEnabled = not freeModeEnabled updateAllGlow() end)
+
+local resetPosBtn = Instance.new("TextButton", controlSec); resetPosBtn.Size = UDim2.new(1,0,0,30); resetPosBtn.Text = "Resetar Posição FOV"; resetPosBtn.BackgroundTransparency = 1; resetPosBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+resetPosBtn.Activated:Connect(function() fovPosition = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2) end)
 
 local shapeSec = addSection(configTab, "FORMA DO FOV")
 for _, s in pairs({"Círculo", "Quadrado", "Crosshair"}) do
@@ -188,46 +191,30 @@ for name, color in pairs(creativeColors) do
     b.Activated:Connect(function() isRGB = false fovColor = color updateAllGlow() end)
 end
 
--- RENDER LOOP (LÓGICA ATUALIZADA - SELEÇÃO GLOBAL + ÂNCORA VISUAL)
+-- RENDER LOOP (LÓGICA ATUALIZADA - DETECÇÃO VISUAL CORRIGIDA)
 RunService.RenderStepped:Connect(function()
     if not scriptActive then return end
     local dynamicColor = isRGB and Color3.fromHSV(tick() % 5 / 5, 1, 1) or fovColor
     uiStroke.Color = dynamicColor; updateAllGlow()
 
-    -- 1. Controle da Posição do FOV (Arrastar com mouse COM LIMITES)
+    -- 1. Controle da Posição do FOV (REMOVIDO RESET AUTOMÁTICO)
     if freeModeEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
         local mPos = Vector2.new(mouse.X, mouse.Y + 36)
-        
-        -- Verifica se está tentando arrastar (Detecta clique próximo ou já arrastando)
         if (mPos - fovPosition).Magnitude < 100 or draggingFov then 
             draggingFov = true
-            
-            -- LÓGICA DE CLAMP (Limite seguro para não quebrar a mira)
-            local centerScreen = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
-            
-            -- Calcula a distância que o mouse está do centro
-            local desiredOffsetX = mPos.X - centerScreen.X
-            local desiredOffsetY = mPos.Y - centerScreen.Y
-            
-            -- Aplica o limite estrito: Apenas 20px no X e 15px no Y
-            local clampedX = math.clamp(desiredOffsetX, -20, 20)
-            local clampedY = math.clamp(desiredOffsetY, -15, 15)
-            
-            -- Define a posição final com os limites aplicados
-            fovPosition = centerScreen + Vector2.new(clampedX, clampedY)
+            -- Removido o limite estrito para permitir movimento livre, já que o usuário quer ajustar o FOV
+            fovPosition = mPos 
         end
     else 
         draggingFov = false 
-        if not freeModeEnabled then
-            fovPosition = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
-        end
+        -- CORREÇÃO: Removida a linha que resetava o FOVPosition para o centro quando soltava o mouse
     end
 
     -- Resetar visibilidade dos desenhos
     for _, d in pairs(drawings) do d.Visible = false end
 
     if aimbotEnabled then
-        -- 2. Desenho do Visual (Onde o jogador será travado visualmente)
+        -- 2. Desenho do Visual
         if currentAimMode ~= "Invisível" then
             if fovShape == "Círculo" then
                 drawings.circle.Visible = true; drawings.circle.Position = fovPosition; drawings.circle.Radius = fovRadius; drawings.circle.Color = dynamicColor
@@ -243,7 +230,6 @@ RunService.RenderStepped:Connect(function()
             end
         end
 
-        -- Efeito Modo Caçador
         if currentAimMode == "Caçador" then
             local pulse = math.abs(math.sin(tick() * 8)) * 15
             local size = fovRadius + pulse
@@ -256,36 +242,54 @@ RunService.RenderStepped:Connect(function()
 
         local target = nil
         
-        -- 3. SELEÇÃO DE ALVO (GLOBAL - DENTRO E FORA DO FOV)
+        -- 3. SELEÇÃO DE ALVO CORRIGIDA (DETECÇÃO VISUAL / SCREEN DISTANCE)
+        -- Agora ele verifica quem está MAIS PRÓXIMO DO CÍRCULO na tela, e não quem está perto do seu personagem no mapa 3D
         if lockedPlayer == "Todos" then
-            local nearestDist = math.huge
+            local nearestDist = fovRadius -- Começa com o raio do FOV como limite máximo
             for _, p in pairs(Players:GetPlayers()) do
                 if p ~= player and p.Character and p.Character:FindFirstChild(targetPart) and p.Character.Humanoid.Health > 0 then
                     if teamCheck and p.Team == player.Team then continue end
-                    local dist = (p.Character[targetPart].Position - player.Character.PrimaryPart.Position).Magnitude
-                    if dist < nearestDist then 
-                        nearestDist = dist
-                        target = p.Character[targetPart] 
+                    
+                    -- Converte posição 3D do alvo para posição 2D na tela
+                    local targetPos3D = p.Character[targetPart].Position
+                    local screenPos, onScreen = camera:WorldToViewportPoint(targetPos3D)
+                    
+                    if onScreen then
+                        local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
+                        local distToFov = (screenPos2D - fovPosition).Magnitude -- Distância até o centro do desenho
+                        
+                        -- Verifica se está DENTRO do círculo e se é o mais próximo
+                        if distToFov < nearestDist then
+                            nearestDist = distToFov
+                            target = p.Character[targetPart]
+                        end
                     end
                 end
             end
         elseif typeof(lockedPlayer) == "Instance" and lockedPlayer.Character then
-            target = lockedPlayer.Character:FindFirstChild(targetPart)
+            -- Para jogador específico travado, verifica se ele está na tela
+            local p = lockedPlayer
+            if p.Character and p.Character:FindFirstChild(targetPart) then
+                local screenPos, onScreen = camera:WorldToViewportPoint(p.Character[targetPart].Position)
+                if onScreen then
+                    target = p.Character[targetPart]
+                end
+            end
         end
 
-        -- 4. APLICAÇÃO DA MIRA (FIXA NO CENTRO DO FOV DESENHADO)
+        -- 4. APLICAÇÃO DA MIRA (Offset Visual)
         if target then
             local lookAtCFrame = CFrame.new(camera.CFrame.Position, target.Position)
             local viewport = camera.ViewportSize
             local center = Vector2.new(viewport.X/2, viewport.Y/2)
             
-            -- Com o limite de 20/15 aplicado acima, dx e dy nunca serão grandes o suficiente para bugar a mira
+            -- Calcula o offset baseado na posição atual do desenho do FOV
             local dx = fovPosition.X - center.X
             local dy = fovPosition.Y - center.Y
             
             local sensX = (camera.FieldOfView / viewport.Y)
             local sensY = sensX
-            local offsetRotation = CFrame.Angles(math.rad(dy * sensY * 0.85), math.rad(-dx * sensX * 0.85), 0)
+            local offsetRotation = CFrame.Angles(math.rad(dy * sensY), math.rad(-dx * sensX), 0)
             
             camera.CFrame = lookAtCFrame * offsetRotation
         end
