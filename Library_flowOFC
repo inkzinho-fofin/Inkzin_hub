@@ -1,0 +1,171 @@
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local Library = {}
+
+function Library:CreateWindow()
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "ModernLibrary"
+    ScreenGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+    ScreenGui.ResetOnSpawn = false
+
+    -- IDs das Imagens
+    local UI_IMAGE = "rbxassetid://135908570815238"
+
+    -- 1. Botão Redondo Arrastável (Agora com a mesma imagem da interface)
+    local ToggleBtn = Instance.new("ImageButton")
+    ToggleBtn.Name = "ToggleButton"
+    ToggleBtn.Size = UDim2.new(0, 60, 0, 60)
+    ToggleBtn.Position = UDim2.new(0, 20, 0, 20)
+    ToggleBtn.Image = UI_IMAGE -- Mesma imagem da interface
+    ToggleBtn.BackgroundTransparency = 1
+    ToggleBtn.ImageColor3 = Color3.fromRGB(255, 255, 255) -- Imagem clara no botão
+    ToggleBtn.Parent = ScreenGui
+    
+    -- Deixar o botão redondo
+    local btnCorner = Instance.new("UICorner", ToggleBtn)
+    btnCorner.CornerRadius = UDim.new(1, 0)
+    
+    -- Borda do Botão
+    local btnStroke = Instance.new("UIStroke", ToggleBtn)
+    btnStroke.Thickness = 2
+    btnStroke.Color = Color3.fromRGB(255, 255, 255)
+    btnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+    -- 2. Interface Principal
+    local MainFrame = Instance.new("ImageLabel")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, 500, 0, 350)
+    MainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
+    MainFrame.Image = UI_IMAGE
+    
+    -- Escurecendo a imagem da interface para contraste
+    MainFrame.ImageColor3 = Color3.fromRGB(100, 100, 100) 
+    MainFrame.BackgroundTransparency = 1
+    MainFrame.Visible = false
+    MainFrame.Active = true
+    MainFrame.Parent = ScreenGui
+
+    -- Borda da Interface
+    local mainStroke = Instance.new("UIStroke", MainFrame)
+    mainStroke.Thickness = 2
+    mainStroke.Color = Color3.fromRGB(255, 255, 255)
+    mainStroke.Transparency = 0.4
+    
+    local mainCorner = Instance.new("UICorner", MainFrame)
+    mainCorner.CornerRadius = UDim.new(0, 15)
+
+    -- Container de Conteúdo
+    local ContentHolder = Instance.new("Frame")
+    ContentHolder.Size = UDim2.new(1, -140, 1, -40)
+    ContentHolder.Position = UDim2.new(0, 130, 0, 20)
+    ContentHolder.BackgroundTransparency = 1
+    ContentHolder.Parent = MainFrame
+
+    -- Aba Lateral
+    local TabList = Instance.new("ScrollingFrame")
+    TabList.Size = UDim2.new(0, 110, 1, -40)
+    TabList.Position = UDim2.new(0, 10, 0, 20)
+    TabList.BackgroundTransparency = 1
+    TabList.ScrollBarThickness = 0
+    TabList.Parent = MainFrame
+    
+    Instance.new("UIListLayout", TabList).Padding = UDim.new(0, 8)
+
+    -- Lógica de Arrastar
+    local dragging, dragStart, startPos
+    ToggleBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = ToggleBtn.Position
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            ToggleBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    end)
+
+    -- Abrir/Fechar
+    ToggleBtn.MouseButton1Click:Connect(function()
+        MainFrame.Visible = not MainFrame.Visible
+        -- Efeito simples de clique
+        ToggleBtn:TweenSize(UDim2.new(0, 55, 0, 55), "Out", "Quad", 0.1, true)
+        task.wait(0.1)
+        ToggleBtn:TweenSize(UDim2.new(0, 60, 0, 60), "Out", "Quad", 0.1, true)
+    end)
+
+    -- Funções da Library
+    local Tabs = {}
+    
+    function Tabs:CreateTab(name)
+        local TabBtn = Instance.new("TextButton")
+        TabBtn.Size = UDim2.new(1, 0, 0, 35)
+        TabBtn.Text = name
+        TabBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        TabBtn.BackgroundTransparency = 0.6
+        TabBtn.TextColor3 = Color3.new(1, 1, 1)
+        TabBtn.Font = Enum.Font.GothamBold
+        TabBtn.Parent = TabList
+        Instance.new("UICorner", TabBtn).CornerRadius = UDim.new(0, 8)
+
+        local SectionPage = Instance.new("ScrollingFrame")
+        SectionPage.Size = UDim2.new(1, 0, 1, 0)
+        SectionPage.BackgroundTransparency = 1
+        SectionPage.Visible = false
+        SectionPage.CanvasSize = UDim2.new(0, 0, 0, 0)
+        SectionPage.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        SectionPage.ScrollBarThickness = 2
+        SectionPage.Parent = ContentHolder
+        
+        local secLayout = Instance.new("UIListLayout", SectionPage)
+        secLayout.Padding = UDim.new(0, 15)
+
+        TabBtn.MouseButton1Click:Connect(function()
+            for _, v in pairs(ContentHolder:GetChildren()) do v.Visible = false end
+            SectionPage.Visible = true
+        end)
+
+        local SectionLogic = {}
+        function SectionLogic:CreateSection(title)
+            local SectionFrame = Instance.new("Frame")
+            SectionFrame.Size = UDim2.new(1, -10, 0, 30)
+            SectionFrame.BackgroundTransparency = 1
+            SectionFrame.Parent = SectionPage
+
+            local SectionTitle = Instance.new("TextLabel")
+            SectionTitle.Size = UDim2.new(1, 0, 1, 0)
+            SectionTitle.Text = title:upper()
+            SectionTitle.BackgroundTransparency = 1
+            SectionTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+            SectionTitle.Font = Enum.Font.GothamBold
+            SectionTitle.TextSize = 13
+            SectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+            SectionTitle.Parent = SectionFrame
+            
+            local line = Instance.new("Frame", SectionFrame)
+            line.Size = UDim2.new(1, 0, 0, 1)
+            line.Position = UDim2.new(0, 0, 1, 2)
+            line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            line.BackgroundTransparency = 0.8
+        end
+        
+        return SectionLogic
+    end
+
+    return Tabs
+end
+
+-- Exemplo:
+local window = Library:CreateWindow()
+local aba1 = window:CreateTab("Principal")
+aba1:CreateSection("Recursos")
+aba1:CreateSection("Outros")
+                                        
