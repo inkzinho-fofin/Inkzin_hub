@@ -1,0 +1,242 @@
+-- LibSistemaJogador.luau
+local LibSistemaJogador = {}
+
+-- ====== SERVIÇOS PRÉ-CARREGADOS ======
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+
+-- ====== CONFIGURAÇÕES PADRÃO ======
+local CONFIG = {
+    DISTANCIA_MAX_MIRA = 5000, -- Studs
+    ATIVAR_MIRA_ASSISTIDA = true,
+    ATIVAR_LINHA_VISUAL = true,
+    COR_LINHA_VISUAL = Color3.new(1, 0, 0), -- Vermelho
+    ESPESSURA_LINHA = 2,
+
+    -- Configurações de jogador
+    FORCA_SALTO_PADRAO = 50,
+    VELOCIDADE_PADRAO = 16,
+    DASH_FORCA_PADRAO = 50,
+    INFINITO_PULOS = false
+}
+
+-- ====== VARIÁVEIS INTERNAS ======
+local jogadorLocal = Players.LocalPlayer
+local personagemLocal = nil
+local humanoideLocal = nil
+local linhaVisual = nil
+local conexoes = {}
+
+-- ====== FUNÇÕES AUXILIARES ======
+local function obterPersonagemValido(jogador)
+    if not jogador or not jogador.Character then return nil end
+    local humanoide = jogador.Character:FindFirstChildOfClass("Humanoid")
+    local cabeca = jogador.Character:FindFirstChild("Head")
+    if humanoide and cabeca and humanoide.Health > 0 then
+        return jogador.Character, humanoide, cabeca
+    end
+    return nil
+end
+
+local function encontrarJogadorMaisProximo()
+    if not personagemLocal or not personagemLocal:FindFirstChild("Head") then return nil end
+    local cabecaLocal = personagemLocal.Head
+    local jogadorProximo = nil
+    local menorDistancia = CONFIG.DISTANCIA_MAX_MIRA + 1
+
+    for _, jogador in ipairs(Players:GetPlayers()) do
+        if jogador ~= jogadorLocal then
+            local personagem, _, cabecaAlvo = obterPersonagemValido(jogador)
+            if personagem then
+                local distancia = (cabecaLocal.Position - cabecaAlvo.Position).Magnitude
+                if distancia <= CONFIG.DISTANCIA_MAX_MIRA and distancia < menorDistancia then
+                    menorDistancia = distancia
+                    jogadorProximo = {
+                        Jogador = jogador,
+                        Cabeca = cabecaAlvo,
+                        Distancia = distancia
+                    }
+                end
+            end
+        end
+    end
+
+    return jogadorProximo
+end
+
+local function atualizarLinhaVisual(jogadorAlvo)
+    if not CONFIG.ATIVAR_LINHA_VISUAL or not personagemLocal or not personagemLocal:FindFirstChild("Head") then
+        if linhaVisual then linhaVisual:Destroy() linhaVisual = nil end
+        return
+    end
+
+    if not linhaVisual then
+        linhaVisual = Instance.new("LineHandleAdornment")
+        linhaVisual.Name = "LinhaMiraAssistida"
+        linhaVisual.Adornee = personagemLocal.Head
+        linhaVisual.Parent = personagemLocal.Head
+        linhaVisual.Thickness = CONFIG.ESPESSURA_LINHA
+        linhaVisual.Color3 = CONFIG.COR_LINHA_VISUAL
+        linhaVisual.ZIndex = 10
+    end
+
+    if jogadorAlvo then
+        linhaVisual.Visible = true
+        linhaVisual.CFrame = CFrame.new(Vector3.new(0, 0, 0), jogadorAlvo.Cabeca.Position - personagemLocal.Head.Position)
+        linhaVisual.Length = jogadorAlvo.Distancia
+    else
+        linhaVisual.Visible = false
+    end
+end
+
+-- ====== SISTEMA DE MIRA ASSISTIDA ======
+local function atualizarMiraAssistida()
+    if not CONFIG.ATIVAR_MIRA_ASSISTIDA or not jogadorLocal or not personagemLocal then return end
+    local jogadorProximo = encontrarJogadorMaisProximo()
+    atualizarLinhaVisual(jogadorProximo)
+end
+
+--- Ativa/desativa o sistema de mira assistida
+--- @param ativar boolean - Estado desejado
+function LibSistemaJogador:SetMiraAssistida(ativar)
+    CONFIG.ATIVAR_MIRA_ASSISTIDA = ativar
+    atualizarMiraAssistida()
+end
+
+--- Ajusta a distância máxima de detecção
+--- @param distancia number - Nova distância em studs
+function LibSistemaJogador:SetDistanciaMaxMira(distancia)
+    CONFIG.DISTANCIA_MAX_MIRA = math.max(100, distancia) -- Mínimo 100 studs
+end
+
+--- Ativa/desativa a linha visual e ajusta suas propriedades
+--- @param ativar boolean - Estado desejado
+--- @param cor Color3? - Nova cor da linha (opcional)
+--- @param espessura number? - Nova espessura (opcional)
+function LibSistemaJogador:SetLinhaVisual(ativar, cor, espessura)
+    CONFIG.ATIVAR_LINHA_VISUAL = ativar
+    if cor then CONFIG.COR_LINHA_VISUAL = cor end
+    if espessura then CONFIG.ESPESSURA_LINHA = math.max(1, espessura) end
+    atualizarMiraAssistida()
+end
+
+-- ====== SISTEMA DE CONFIGURAÇÕES DE JOGADOR ======
+local function aplicarConfiguracoesHumanoide()
+    if not humanoideLocal then return end
+
+    -- Configurações de salto
+    humanoideLocal.JumpPower = CONFIG.FORCA_SALTO_PADRAO
+    humanoideLocal:SetAttribute("InfiniteJumps", CONFIG.INFINITO_PULOS)
+
+    -- Configurações de velocidade
+    humanoideLocal.WalkSpeed = CONFIG.VELOCIDADE_PADRAO
+end
+
+local function gerenciarPulosInfinitos(estado)
+    if estado then
+        conexoes.puloInfinito = humanoideLocal:GetPropertyChangedSignal("Jump"):Connect(function()
+            if humanoideLocal.FloorMaterial == Enum.Material.Air then
+                humanoideLocal.Jump = false
+                humanoideLocal:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+    else
+        if conexoes.puloInfinito then
+            conexoes.puloInfinito:Disconnect()
+            conexoes.puloInfinito = nil
+        end
+    end
+end
+
+local function gerenciarDashPersonalizado(forca)
+    if not personagemLocal or not humanoideLocal then return end
+
+    local dashAtivo = false
+    conexoes.dash = UserInputService.InputBegan:Connect(function(input, jogoProcessando)
+        if jogoProcessando then return end
+        if input.KeyCode == Enum.KeyCode.LeftShift then -- Tecla padrão para dash
+            if not dashAtivo then
+                dashAtivo = true
+                local direcao = Workspace.CurrentCamera.CFrame.LookVector * forca
+                direcao.Y = 0 -- Mantém dash no chão
+                humanoideLocal:ApplyImpulse(direcao)
+                
+                -- Cooldown de 1 segundo
+                task.delay(1, function()
+                    dashAtivo = false
+                end)
+            end
+        end
+    end)
+end
+
+--- Configura a força de salto e ativa pulos infinitos
+--- @param forca number - Força do salto
+--- @param infinito boolean - Ativar pulos infinitos
+function LibSistemaJogador:SetConfiguracoesSalto(forca, infinito)
+    CONFIG.FORCA_SALTO_PADRAO = math.max(0, forca)
+    CONFIG.INFINITO_PULOS = infinito
+    if humanoideLocal then
+        aplicarConfiguracoesHumanoide()
+        gerenciarPulosInfinitos(infinito)
+    end
+end
+
+--- Configura a velocidade de movimento do jogador
+--- @param velocidade number - Nova velocidade
+function LibSistemaJogador:SetVelocidade(velocidade)
+    CONFIG.VELOCIDADE_PADRAO = math.max(0, velocidade)
+    if humanoideLocal then
+        humanoideLocal.WalkSpeed = CONFIG.VELOCIDADE_PADRAO
+    end
+end
+
+--- Configura o dash personalizado do jogador
+--- @param forca number - Força do dash
+function LibSistemaJogador:SetDashPersonalizado(forca)
+    if conexoes.dash then
+        conexoes.dash:Disconnect()
+        conexoes.dash = nil
+    end
+    gerenciarDashPersonalizado(math.max(10, forca))
+end
+
+-- ====== INICIALIZAÇÃO E LIMPEZA ======
+local function inicializarPersonagem()
+    personagemLocal = jogadorLocal.Character or jogadorLocal.CharacterAdded:Wait()
+    humanoideLocal = personagemLocal:WaitForChildOfClass("Humanoid")
+    
+    aplicarConfiguracoesHumanoide()
+    gerenciarPulosInfinitos(CONFIG.INFINITO_PULOS)
+    gerenciarDashPersonalizado(CONFIG.DASH_FORCA_PADRAO)
+end
+
+function LibSistemaJogador:Inicializar()
+    if not jogadorLocal then return warn("Jogador local não encontrado") end
+    
+    inicializarPersonagem()
+    conexoes.characterAdded = jogadorLocal.CharacterAdded:Connect(inicializarPersonagem)
+    conexoes.atualizarMira = RunService.RenderStepped:Connect(atualizarMiraAssistida)
+end
+
+function LibSistemaJogador:Destruir()
+    -- Limpa todas as conexões
+    for _, conexao in pairs(conexoes) do
+        conexao:Disconnect()
+    end
+    conexoes = {}
+    
+    -- Remove a linha visual
+    if linhaVisual then linhaVisual:Destroy() end
+    
+    -- Restaura configurações padrão
+    if humanoideLocal then
+        humanoideLocal.JumpPower = 50
+        humanoideLocal.WalkSpeed = 16
+        humanoideLocal:SetAttribute("InfiniteJumps", false)
+    end
+end
+
+return LibSistemaJogador
