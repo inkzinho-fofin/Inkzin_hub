@@ -1,299 +1,316 @@
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
+-- LibMissoesBloxFruits.luau
+local LibMissoesBloxFruits = {}
 
-local FlowLib = {}
+-- ====== CONSTANTES DOS MARES ======
+LibMissoesBloxFruits.NIVEL_ACESSO_SEGUNDO_MAR = 700
+LibMissoesBloxFruits.NIVEL_ACESSO_TERCEIRO_MAR = 1500
 
--- [CONFIGURAÇÃO DE TEMAS]
-local Themes = {
-	Black = {Main = Color3.fromRGB(10, 10, 10), Sec = Color3.fromRGB(20, 20, 20), Accent = Color3.fromRGB(255, 255, 255)},
-	DarkPurple = {Main = Color3.fromRGB(15, 5, 30), Sec = Color3.fromRGB(25, 10, 50), Accent = Color3.fromRGB(140, 70, 255)},
-}
-
-function FlowLib:Init(themeName)
-	local theme = Themes[themeName] or Themes.DarkPurple
-	
-	local ScreenGui = Instance.new("ScreenGui")
-	ScreenGui.Name = "Flow_Unificado"
-	ScreenGui.ResetOnSpawn = false
-	ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
-	-- [ORBE CYBERPUNK]
-	local OpenBtn = Instance.new("TextButton")
-	OpenBtn.Size = UDim2.new(0, 50, 0, 50)
-	OpenBtn.Position = UDim2.new(0, 20, 0, 100)
-	OpenBtn.BackgroundColor3 = theme.Main
-	OpenBtn.Text = "F"
-	OpenBtn.TextColor3 = theme.Accent
-	OpenBtn.Font = Enum.Font.GothamBold
-	OpenBtn.TextSize = 22
-	OpenBtn.Parent = ScreenGui
-	Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
-	local Stroke = Instance.new("UIStroke", OpenBtn)
-	Stroke.Color = theme.Accent
-	Stroke.Thickness = 2
-
-	-- [JANELA PRINCIPAL]
-	local Main = Instance.new("Frame")
-	Main.Size = UDim2.new(0, 550, 0, 350)
-	Main.Position = UDim2.new(0.5, -275, 0.5, -175)
-	Main.BackgroundColor3 = theme.Main
-	Main.Parent = ScreenGui
-	Main.Visible = true
-	Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
-
-	local Header = Instance.new("Frame")
-	Header.Size = UDim2.new(1, 0, 0, 40)
-	Header.BackgroundColor3 = theme.Sec
-	Header.Parent = Main
-	Instance.new("UICorner", Header)
-
-	local Title = Instance.new("TextLabel")
-	Title.Text = "  FLOW_BLOX_FRUITS"
-	Title.Size = UDim2.new(0.5, 0, 1, 0)
-	Title.BackgroundTransparency = 1
-	Title.TextColor3 = theme.Accent
-	Title.Font = Enum.Font.GothamBold
-	Title.TextSize = 14
-	Title.TextXAlignment = Enum.TextXAlignment.Left
-	Title.Parent = Header
-
-	local Sidebar = Instance.new("ScrollingFrame")
-	Sidebar.Size = UDim2.new(0, 130, 1, -50)
-	Sidebar.Position = UDim2.new(0, 10, 0, 45)
-	Sidebar.BackgroundTransparency = 1
-	Sidebar.ScrollBarThickness = 0
-	Sidebar.Parent = Main
-	Instance.new("UIListLayout", Sidebar).Padding = UDim.new(0, 5)
-
-	local ContentHolder = Instance.new("Frame")
-	ContentHolder.Size = UDim2.new(1, -160, 1, -55)
-	ContentHolder.Position = UDim2.new(0, 150, 0, 45)
-	ContentHolder.BackgroundColor3 = theme.Sec
-	ContentHolder.Parent = Main
-	Instance.new("UICorner", ContentHolder)
-
-	-- DRAG SYSTEM
-	local function MakeDraggable(obj, dragPart)
-		local dragging, dragInput, dragStart, startPos
-		dragPart.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-				dragging = true
-				dragStart = input.Position
-				startPos = obj.Position
-			end
-		end)
-		UserInputService.InputChanged:Connect(function(input)
-			if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-				local delta = input.Position - dragStart
-				obj.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-			end
-		end)
-		UserInputService.InputEnded:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-				dragging = false
-			end
-		end)
-	end
-	MakeDraggable(Main, Header)
-	MakeDraggable(OpenBtn, OpenBtn)
-
-	local Tabs = {}
-	local firstTab = true
-
-	function FlowLib:AddTab(name)
-		local TabBtn = Instance.new("TextButton")
-		TabBtn.Size = UDim2.new(1, 0, 0, 35)
-		TabBtn.BackgroundColor3 = theme.Main
-		TabBtn.Text = name
-		TabBtn.TextColor3 = theme.Accent
-		TabBtn.Font = Enum.Font.GothamSemibold
-		TabBtn.Parent = Sidebar
-		Instance.new("UICorner", TabBtn).CornerRadius = UDim.new(0, 6)
-		local bStroke = Instance.new("UIStroke", TabBtn)
-		bStroke.Color = theme.Accent
-		bStroke.Transparency = 0.8
-
-		local Page = Instance.new("ScrollingFrame")
-		Page.Size = UDim2.new(1, -10, 1, -10)
-		Page.Position = UDim2.new(0, 5, 0, 5)
-		Page.BackgroundTransparency = 1
-		Page.Visible = false
-		Page.ScrollBarThickness = 2
-		Page.Parent = ContentHolder
-		Instance.new("UIListLayout", Page).Padding = UDim.new(0, 5)
-
-		if firstTab then
-			Page.Visible = true
-			bStroke.Transparency = 0
-			firstTab = false
-		end
-
-		TabBtn.MouseButton1Click:Connect(function()
-			for _, v in pairs(ContentHolder:GetChildren()) do if v:IsA("ScrollingFrame") then v.Visible = false end end
-			for _, v in pairs(Sidebar:GetChildren()) do if v:IsA("TextButton") then v.UIStroke.Transparency = 0.8 end end
-			Page.Visible = true
-			bStroke.Transparency = 0
-		end)
-
-		local Components = {}
-
-		-- [TOGGLE]
-		function Components:AddToggle(text, callback)
-			local Toggle = Instance.new("TextButton")
-			Toggle.Size = UDim2.new(1, 0, 0, 35)
-			Toggle.BackgroundColor3 = theme.Main
-			Toggle.Text = "  " .. text
-			Toggle.TextColor3 = theme.Accent
-			Toggle.Font = Enum.Font.Gotham
-			Toggle.TextSize = 13
-			Toggle.TextXAlignment = Enum.TextXAlignment.Left
-			Toggle.Parent = Page
-			Instance.new("UICorner", Toggle)
-			
-			local Indicator = Instance.new("Frame")
-			Indicator.Size = UDim2.new(0, 20, 0, 20)
-			Indicator.Position = UDim2.new(1, -25, 0.5, -10)
-			Indicator.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-			Indicator.Parent = Toggle
-			Instance.new("UICorner", Indicator).CornerRadius = UDim.new(1, 0)
-
-			local state = false
-			Toggle.MouseButton1Click:Connect(function()
-				state = not state
-				TweenService:Create(Indicator, TweenInfo.new(0.3), {BackgroundColor3 = state and theme.Accent or Color3.fromRGB(50, 50, 50)}):Play()
-				callback(state)
-			end)
-		end
-
-		-- [SLIDER] (Ajustado para funcionar a dedo/mouse)
-		function Components:AddSlider(text, min, max, default, callback)
-			local SliderFrame = Instance.new("Frame")
-			SliderFrame.Size = UDim2.new(1, 0, 0, 45)
-			SliderFrame.BackgroundColor3 = theme.Main
-			SliderFrame.Parent = Page
-			Instance.new("UICorner", SliderFrame)
-
-			local Label = Instance.new("TextLabel")
-			Label.Text = "  " .. text .. ": " .. default
-			Label.Size = UDim2.new(1, 0, 0, 20)
-			Label.BackgroundTransparency = 1
-			Label.TextColor3 = theme.Accent
-			Label.Font = Enum.Font.Gotham
-			Label.TextXAlignment = Enum.TextXAlignment.Left
-			Label.Parent = SliderFrame
-
-			local BarBG = Instance.new("Frame")
-			BarBG.Size = UDim2.new(1, -20, 0, 6)
-			BarBG.Position = UDim2.new(0, 10, 0, 30)
-			BarBG.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-			BarBG.Parent = SliderFrame
-			Instance.new("UICorner", BarBG)
-
-			local Bar = Instance.new("Frame")
-			Bar.Size = UDim2.new((default - min)/(max - min), 0, 1, 0)
-			Bar.BackgroundColor3 = theme.Accent
-			Bar.Parent = BarBG
-			Instance.new("UICorner", Bar)
-
-			local function UpdateSlider()
-				local mousePos = UserInputService:GetMouseLocation().X
-				local barPos = BarBG.AbsolutePosition.X
-				local barSize = BarBG.AbsoluteSize.X
-				local percent = math.clamp((mousePos - barPos) / barSize, 0, 1)
-				local value = math.floor(min + (max - min) * percent)
+-- ====== PRIMEIRO MAR (VELHO MUNDO) ======
+LibMissoesBloxFruits.PRIMEIRO_MAR = {
+    ["Ilha Inicial (Piratas/Marines)"] = {
+        NivelRecomendado = "0-10",
+        Missoes = {
+            {
+                Nome = "Derrotar Bandidos/Recrutas",
+                NivelNecessario = 0,
+                Objetivo = "Derrotar 5 Bandidos (Ilha Pirata) ou 5 Recrutas de Marinha (Ilha Marinha)",
+                Recompensas = { Dinheiro = 350, XP = 300 }
+            }
+        },
+        Chefes = {}
+    },
+    ["Jungle"] = {
+        NivelRecomendado = "10-30",
+        Missoes = {
+            {
+                Nome = "Derrotar Macacos",
+                NivelNecessario = 10,
+                Objetivo = "Derrotar 6 Macacos",
+                Recompensas = { Dinheiro = 800, XP = 2300 }
+            },
+            {
+                Nome = "Derrotar Gorilas",
+                NivelNecessario = 15,
+                Objetivo = "Derrotar 8 Gorilas",
+                Recompensas = { Dinheiro = 1200, XP = 4500 }
+            },
+            {
+                Nome = "Derrotar Rei dos Gorilas",
+                NivelNecessario = 20,
+                Objetivo = "Derrotar o Rei dos Gorilas",
+                Recompensas = { Dinheiro = 2000, XP = 9500, ItemEspecial = "Aura" }
+            }
+        },
+        Chefes = { "Rei dos Gorilas", "Especialista em Sabre" }
+    },
+    ["Vila Pirata"] = {
+        NivelRecomendado = "30-60",
+        Missoes = {
+            {
+                Nome = "Derrotar Piratas",
+                NivelNecessario = 30,
+                Objetivo = "Derrotar 8 Piratas",
+                Recompensas = { Dinheiro = 3000, XP = 13000, ItemEspecial = "Cutlass" }
+            },
+            {
+                Nome = "Derrotar Brutos",
+                NivelNecessario = 40,
+                Objetivo = "Derrotar 8 Brutos",
+                Recompensas = { Dinheiro = 3500, XP = 22000, ItemEspecial = "Maça de Ferro" }
+            },
+            {
+                Nome = "Derrotar Bobby o Palhaço",
+                NivelNecessario = 55,
+                Objetivo = "Derrotar Bobby o Palhaço",
+                Recompensas = { Dinheiro = 8000, XP = 45000, ItemEspecial = "Chop" }
+            }
+        },
+        Chefes = { "Bobby o Palhaço" }
+    },
+    ["Deserto"] = {
+        NivelRecomendado = "60-90",
+        Missoes = {
+            {
+                Nome = "Derrotar Bandidos do Deserto",
+                NivelNecessario = 60,
+                Objetivo = "Derrotar 10 Bandidos do Deserto",
+                Recompensas = { Dinheiro = 4000, XP = 45000, ItemEspecial = "Cutlass" }
+            },
+            {
+                Nome = "Derrotar Oficiais do Deserto",
+                NivelNecessario = 75,
+                Objetivo = "Derrotar 6 Oficiais do Deserto",
+                Recompensas = { Dinheiro = 4500, XP = 65000, ItemEspecial = "Cutlass" }
+            }
+        },
+        Chefes = {}
+    },
+    ["Ilha do Meio"] = {
+        NivelRecomendado = "100+",
+        Missoes = {
+            {
+                Nome = "Derrotar Saw",
+                NivelNecessario = 100,
+                Objetivo = "Derrotar Saw",
+                Recompensas = { Dinheiro = nil, XP = nil, ItemEspecial = "Serra de Tubarão (chance)" }
+            }
+        },
+        Chefes = { "Saw" }
+    },
+    ["Vila Congelada"] = {
+        NivelRecomendado = "90-120",
+        Missoes = {
+            {
+                Nome = "Derrotar Bandidos das Neves",
+                NivelNecessario = 90,
+                Objetivo = "Derrotar 7 Bandidos das Neves",
+                Recompensas = { Dinheiro = 5000, XP = 90000, ItemEspecial = "Katana" }
+            },
+            {
+                Nome = "Derrotar Bonecos de Neve",
+                NivelNecessario = 100,
+                Objetivo = "Derrotar 10 Bonecos de Neve",
+                Recompensas = { Dinheiro = 5500, XP = 150000 }
+            },
+            {
+                Nome = "Derrotar Yeti",
+                NivelNecessario = 105,
+                Objetivo = "Derrotar Yeti",
+                Recompensas = { Dinheiro = 10000, XP = 220000 }
+            }
+        },
+        Chefes = { "Yeti", "Almirante de Gelo" }
+    },
+    ["Fortaleza Marinha"] = {
+        NivelRecomendado = "120-150",
+        Missoes = {
+            {
+                Nome = "Derrotar Oficiais Subchefe",
+                NivelNecessario = 120,
+                Objetivo = "Derrotar 8 Oficiais Subchefe",
+                Recompensas = { Dinheiro = 6000, XP = 225000, ItemEspecial = "Dual Katana" }
+            },
+            {
+                Nome = "Derrotar Vice-Almirante",
+                NivelNecessario = 130,
+                Objetivo = "Derrotar Vice-Almirante",
+                Recompensas = { Dinheiro = 15000, XP = 415000, ItemEspecial = "Triple Katana" }
+            }
+        },
+        Chefes = { "Vice-Almirante", "Greybeard (Chefe de Raid)" }
+    },
+    ["Skylands"] = {
+        NivelRecomendado = "150-190",
+        Missoes = {
+            {
+                Nome = "Derrotar Bandidos do Céu",
+                NivelNecessario = 150,
+                Objetivo = "Derrotar 7 Bandidos do Céu",
+                Recompensas = { Dinheiro = 7000, XP = 315000, ItemEspecial = "Dual Katana" }
+            },
+            {
+                Nome = "Derrotar Mestres das Trevas",
+                NivelNecessario = 175,
+                Objetivo = "Derrotar 8 Mestres das Trevas",
+                Recompensas = { Dinheiro = 7500, XP = 450000, ItemEspecial = "Maça de Ferro" }
+            }
+        },
+        Chefes = {}
+    },
+    ["Prisão"] = {
+        NivelRecomendado = "190-250",
+        Missoes = {
+            {
+                Nome = "Derrotar Presos",
+                NivelNecessario = 190,
+                Objetivo = "Derrotar 8 Presos",
+                Recompensas = { Dinheiro = 7000, XP = 550000 }
+            },
+            {
+                Nome = "Derrotar Presos Perigosos",
+                NivelNecessario = 210,
+                Objetivo = "Derrotar 8 Presos Perigosos",
+                Recompensas = { Dinheiro = 7500, XP = 780000, ItemEspecial = "Cutlass" }
+            },
+            {
+                Nome = "Derrotar Diretor da Prisão",
+                NivelNecessario = 220,
+                Objetivo = "Derrotar Diretor da Prisão",
+                Recompensas = { Dinheiro = 6000, XP = 850000 }
+            },
+            {
+                Nome = "Derrotar Chefe Diretor",
+                NivelNecessario = 230,
+                Objetivo = "Derrotar Chefe Diretor",
+                Recompensas = { Dinheiro = 10000, XP = 1000000 }
+            },
+            {
+                Nome = "Derrotar Swan",
+                NivelNecessario = 240,
+                Objetivo = "Derrotar Swan",
+                Recompensas = { Dinheiro = 15000, XP = 1600000, ItemEspecial = "Spider" }
+            }
+        },
+        Chefes = { "Diretor da Prisão", "Chefe Diretor", "Swan" }
+    },
+    ["Coliseu"] = {
+        NivelRecomendado = "250-300",
+        Missoes = {
+            {
+                Nome = "Derrotar Guerreiros com Toga",
+                NivelNecessario = 250,
+                Objetivo = "Derrotar 7 Guerreiros com Toga",
+                Recompensas = { Dinheiro = 7000, XP = 1100000 }
+            },
+            {
+                Nome = "Derrotar Gladiadores",
+                NivelNecessario = 275,
+                Objetivo = "Derrotar 8 Gladiadores",
+                Recompensas = { Dinheiro = 7500, XP = 1300000 }
+            }
+        },
+        Chefes = {}
+    },
+    ["Vila Magma"] = {
+        NivelRecomendado = "300-375",
+        Missoes = {
+            {
+                Nome = "Derrotar Soldados Militares",
+                NivelNecessario = 300,
+                Objetivo = "Derrotar 9 Soldados Militares",
+                Recompensas = { Dinheiro = 8250, XP = 1700000, ItemEspecial = "Katana, Aura" }
+            },
+            {
+                Nome = "Derrotar Espiões Militares",
+                NivelNecessario = 325,
+                Objetivo = "Derrotar 8 Espiões Militares",
+                Recompensas = { Dinheiro = 8500, XP = 2000000, ItemEspecial = "Aura, Flash Step" }
+            },
+            {
+                Nome = "Derrotar Almirante Magma",
+                NivelNecessario = 350,
+                Objetivo = "Derrotar Almirante Magma",
+                Recompensas = { Dinheiro = 15000, XP = 3000000, ItemEspecial = "Magma" }
+            }
+        },
+        Chefes = { "Almirante Magma" }
+    },
+    ["Cidade Subaquática"] = {
+        NivelRecomendado = "375-450",
+        Missoes = {
+            {
+                Nome = "Derrotar Guerreiros Peixes-Homens",
+                NivelNecessario = 375,
+                Objetivo = "Derrotar 8 Guerreiros Peixes-Homens",
+                Recompensas = { Dinheiro = 8750, XP = 3050000, ItemEspecial = "Katana" }
+            },
+            {
+                Nome = "Derrotar Comandos Peixes-Homens",
+                NivelNecessario = 400,
+                Objetivo = "Derrotar 8 Comandos Peixes-Homens",
+                Recompensas = { Dinheiro = 9000, XP = 3350000, ItemEspecial = "Triple Katana" }
+            },
+            {
+                Nome = "Derrotar Senhor dos Peixes-Homens",
+                NivelNecessario = 425,
+                Objetivo = "Derrotar Senhor dos Peixes-Homens",
+                Recompensas = { Dinheiro = 15000, XP = 4250000, ItemEspecial = "Tridente" }
+            }
+        },
+        Chefes = { "Senhor dos Peixes-Homens" }
+    },
+    ["Skylands (Upper Yard)"] = {
+        NivelRecomendado = "450-625",
+        Missoes = {
+            {
+                Nome = "Derrotar Guardiões dos Deuses",
+                NivelNecessario = 450,
+                Objetivo = "Derrotar 8 Guardiões dos Deuses",
+                Recompensas = { Dinheiro = 8750, XP = 4250000, ItemEspecial = "Dual-Headed Blade" }
+            },
+            {
+                Nome = "Derrotar Shandas",
+                NivelNecessario = 475,
+                Objetivo = "Derrotar 8 Shandas",
+                Recompensas = { Dinheiro = 9000, XP = 5000000 }
+            },
+            {
+                Nome = "Derrotar Wysper",
+                NivelNecessario = 500,
+                Objetivo = "Derrotar Wysper",
+                Recompensas = { Dinheiro = 15000, XP = 5700000, ItemEspecial = "Bazooka" }
+            },
+            {
+                Nome = "Derrotar Esquadrões Reais",
+                NivelNecessario = 525,
+                Objetivo = "Derrotar 8 Esquadrões Reais",
+                Recompensas = { Dinheiro = 9500, XP = 5800000 }
+            },
+            {
+                Nome = "Derrotar Soldados Reais",
+                NivelNecessario = 550,
+                Objetivo = "Derrotar 8 Soldados Reais",
+                Recompensas = { Dinheiro = 9750, XP = 6300000 }
+            },
+            {
+                Nome = "Derrotar Deus do Trovão",
+                NivelNecessario = 575,
+                Objetivo = "Derrotar Deus do Trovão",
+                Recompensas = { Dinheiro = 20000, XP = 8000000, ItemEspecial = "Rumble, Pole (1ª Forma)" }
+            }
+        },
+        Chefes = { "Deus do Trovão", "Wysper" }
+    },
+    ["Cidade da Fonte"] = {
+        NivelRecomendado = "625-700",
+        Missoes = {
+            {
+                Nome = "Derrotar Piratas da Galera",
+                NivelNecessario = 625,
+                Objetivo = "Derrotar 8 Piratas da Galera",
+                Recompensas = { Dinheiro = 10000, XP = 7500000, ItemEspecial = "Katana" }
+            },
+            {
+                Nome = "Derrotar Capitães da Galera",
+                NivelN
 				
-				Bar.Size = UDim2.new(percent, 0, 1, 0)
-				Label.Text = "  " .. text .. ": " .. value
-				callback(value)
-			end
-
-			BarBG.InputBegan:Connect(function(input)
-				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-					local moveConn
-					moveConn = UserInputService.InputChanged:Connect(function(moveInput)
-						if moveInput.UserInputType == Enum.UserInputType.MouseMovement or moveInput.UserInputType == Enum.UserInputType.Touch then
-							UpdateSlider()
-						end
-					end)
-					UserInputService.InputEnded:Connect(function(endInput)
-						if endInput.UserInputType == Enum.UserInputType.MouseButton1 or endInput.UserInputType == Enum.UserInputType.Touch then
-							moveConn:Disconnect()
-						end
-					end)
-					UpdateSlider()
-				end
-			end)
-		end
-
-		return Components
-	end
-
-	OpenBtn.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
-	
-	return FlowLib
-end
-
------------------------------------------------------------
--- LÓGICA DO JOGO (SEA 1)
------------------------------------------------------------
-
-local QuestData = {
-    {Level = 1, NPC = "Bandit", QuestName = "BanditQuest1", QuestLevel = 1, EnemyPos = CFrame.new(1060, 17, 1547), QuestPos = CFrame.new(1060, 17, 1547)},
-    {Level = 10, NPC = "Monkey", QuestName = "JungleQuest", QuestLevel = 1, EnemyPos = CFrame.new(-1600, 37, 150), QuestPos = CFrame.new(-1600, 37, 150)},
-    -- ... (adicione as outras quests aqui conforme seu código original)
-}
-
-local function TweenTo(cframe)
-    local Character = LocalPlayer.Character
-    if Character and Character:FindFirstChild("HumanoidRootPart") then
-        local HRP = Character.HumanoidRootPart
-        local Dist = (HRP.Position - cframe.Position).Magnitude
-        local Speed = _G.FlySpeed or 300
-        local Info = TweenInfo.new(Dist / Speed, Enum.EasingStyle.Linear)
-        local Tween = TweenService:Create(HRP, Info, {CFrame = cframe})
-        Tween:Play()
-        return Tween
-    end
-end
-
--- [EXECUÇÃO]
-local MyUI = FlowLib:Init("DarkPurple")
-
-local Farm = MyUI:AddTab("Farm")
-local Config = MyUI:AddTab("Config")
-local Fruits = MyUI:AddTab("Fruits")
-local Teleport = MyUI:AddTab("Teleport")
-
--- EXEMPLO DE USO DOS NOVOS COMPONENTES:
-Farm:AddToggle("Auto Farm Level", function(s)
-    _G.AutoFarm = s
-    -- Lógica de farm aqui...
-end)
-
-Config:AddSlider("Velocidade do Tween", 100, 500, 300, function(v)
-    _G.FlySpeed = v
-end)
-
-Config:AddToggle("Pulo Infinito", function(s)
-    _G.InfJump = s
-    UserInputService.JumpRequest:Connect(function()
-        if _G.InfJump then LocalPlayer.Character:FindFirstChildOfClass('Humanoid'):ChangeState("Jumping") end
-    end)
-end)
-
-Fruits:AddToggle("Teleport to Fruit", function(s)
-    _G.TPFruit = s
-end)
-
--- Sistema de Noclip automático para o Tween
-RunService.Stepped:Connect(function()
-    if _G.AutoFarm and LocalPlayer.Character then
-        for _, v in pairs(LocalPlayer.Character:GetChildren()) do
-            if v:IsA("BasePart") then v.CanCollide = false end
-        end
-    end
-end)
