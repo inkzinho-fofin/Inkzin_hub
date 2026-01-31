@@ -1,0 +1,116 @@
+-- LibServicos.luau
+local LibServicos = {}
+
+-- ====== SERVIÇOS PRÉ-CARREGADOS ======
+local TweenService = game:GetService("TweenService")
+local TeleportService = game:GetService("TeleportService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+-- ====== CONFIGURAÇÕES PADRÃO ======
+local CONFIG_PADRAO_TWEEN = {
+    Duracao = 1,
+    Estilo = Enum.EasingStyle.Quad,
+    Direcao = Enum.EasingDirection.Out,
+    Repeticoes = 0,
+    Reverter = false,
+    Atraso = 0
+}
+
+-- ====== MÉTODOS DE TWEEN ======
+--- Cria e reproduz um tween em um objeto
+--- @param objeto Instance - Objeto alvo do tween
+--- @param propriedades table - Propriedades a serem animadas (ex: {Position = Vector3.new(0,0,0)})
+--- @param config table? - Configurações personalizadas (opcional)
+--- @return Tween - Tween criado
+function LibServicos:CriarTween(objeto, propriedades, config)
+    assert(typeof(objeto) == "Instance", "Objeto alvo deve ser uma Instance")
+    assert(type(propriedades) == "table" and next(propriedades), "Propriedades devem ser uma tabela não vazia")
+    
+    local configFinal = setmetatable(config or {}, {__index = CONFIG_PADRAO_TWEEN})
+    local infoTween = TweenInfo.new(
+        configFinal.Duracao,
+        configFinal.Estilo,
+        configFinal.Direcao,
+        configFinal.Repeticoes,
+        configFinal.Reverter,
+        configFinal.Atraso
+    )
+    
+    local tween = TweenService:Create(objeto, infoTween, propriedades)
+    tween:Play()
+    return tween
+end
+
+-- ====== MÉTODOS DE TELEPORTE ======
+--- Teleporta um jogador para um lugar específico
+--- @param jogador Player - Jogador alvo
+--- @param idLugar number - ID do lugar no Roblox
+--- @param dados table? - Dados a serem transmitidos (opcional)
+function LibServicos:TeleportarJogador(jogador, idLugar, dados)
+    assert(typeof(jogador) == "Instance" and jogador:IsA("Player"), "Jogador inválido")
+    assert(type(idLugar) == "number" and idLugar > 0, "ID do lugar inválido")
+    
+    local sucesso, erro = pcall(function()
+        TeleportService:Teleport(idLugar, jogador, dados)
+    end)
+    
+    if not sucesso then
+        warn(`Falha ao teleportar {jogador.Name}: {erro}`)
+    end
+end
+
+--- Teleporta todos os jogadores para um lugar específico
+--- @param idLugar number - ID do lugar no Roblox
+--- @param dados table? - Dados a serem transmitidos (opcional)
+function LibServicos:TeleportarTodosJogadores(idLugar, dados)
+    assert(type(idLugar) == "number" and idLugar > 0, "ID do lugar inválido")
+    
+    for _, jogador in ipairs(Players:GetPlayers()) do
+        self:TeleportarJogador(jogador, idLugar, dados)
+    end
+end
+
+-- ====== MÉTODOS DE ATUALIZAÇÃO ======
+--- Cria um loop de atualização (bindToRenderStep ou Heartbeat)
+--- @param nomeLoop string - Nome único para identificar o loop
+--- @param funcaoAtualizacao function - Função a ser executada a cada ciclo
+--- @param prioridade number? - Prioridade do loop (padrão: Enum.RenderPriority.Last.Value)
+function LibServicos:CriarLoopAtualizacao(nomeLoop, funcaoAtualizacao, prioridade)
+    assert(type(nomeLoop) == "string" and nomeLoop ~= "", "Nome do loop inválido")
+    assert(type(funcaoAtualizacao) == "function", "Função de atualização inválida")
+    
+    local prioridadeFinal = prioridade or Enum.RenderPriority.Last.Value
+    
+    if RunService:IsClient() then
+        RunService:BindToRenderStep(nomeLoop, prioridadeFinal, funcaoAtualizacao)
+    else
+        RunService.Heartbeat:Connect(funcaoAtualizacao)
+    end
+end
+
+--- Remove um loop de atualização criado anteriormente
+--- @param nomeLoop string - Nome do loop a ser removido
+function LibServicos:RemoverLoopAtualizacao(nomeLoop)
+    assert(type(nomeLoop) == "string" and nomeLoop ~= "", "Nome do loop inválido")
+    
+    if RunService:IsClient() then
+        RunService:UnbindFromRenderStep(nomeLoop)
+    else
+        -- Para Heartbeat, armazenar conexões seria necessário (melhoria futura)
+        warn("Remoção de loops do servidor requer armazenamento de conexões - implementação pendente")
+    end
+end
+
+-- ====== MÉTODOS DE UTILITÁRIO ======
+--- Obtém um serviço de forma segura
+--- @param nomeServico string - Nome do serviço
+--- @return Instance? - Serviço ou nil se não encontrado
+function LibServicos:ObterServico(nomeServico)
+    assert(type(nomeServico) == "string" and nomeServico ~= "", "Nome do serviço inválido")
+    
+    local sucesso, servico = pcall(game.GetService, game, nomeServico)
+    return sucesso and servico or nil
+end
+
+return LibServicos
