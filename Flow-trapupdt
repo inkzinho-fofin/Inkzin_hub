@@ -1,0 +1,91 @@
+--[[
+    FLOW_BLOX OPTIMIZER
+    Versão: Safe Mode (Não deleta objetos, apenas reduz qualidade)
+]]
+
+local Lighting = game:GetService("Lighting")
+local Terrain = workspace:FindFirstChildOfClass("Terrain")
+local StarterGui = game:GetService("StarterGui")
+
+-- 1. Notificação Visual "flow_blox"
+task.spawn(function()
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = "flow_blox";
+            Text = "Reduzindo materiais com segurança para melhor desempenho";
+            Icon = "rbxassetid://89413699428471"; -- Pode colocar um ID de ícone se tiver
+            Duration = 5;
+        })
+    end)
+    print(">> flow_blox: Iniciando otimização de materiais...")
+end)
+
+-- 2. Configurações Globais de Iluminação (Otimização Geral)
+Lighting.GlobalShadows = false
+Lighting.FogEnd = 9e9
+Lighting.Brightness = 2 -- Mantém claridade sem processamento pesado
+
+if Terrain then
+    Terrain.WaterWaveSize = 0
+    Terrain.WaterWaveSpeed = 0
+    Terrain.WaterReflectance = 0
+    Terrain.WaterTransparency = 0
+    -- Define o material do terreno para o mais simples, se possível
+    pcall(function()
+        Terrain.MaterialColors = {
+            Grass = workspace.Terrain:GetMaterialColor(Enum.Material.Grass) 
+            -- Mantém a cor original para não ficar feio, mas reduz o efeito visual
+        }
+    end)
+end
+
+-- 3. Função de Otimização Segura
+local function OtimizarItem(obj)
+    -- Blocos e Meshes: Muda para Plástico Liso (Renderização mais rápida)
+    -- NÃO deletamos MeshParts, pois isso quebraria o formato do objeto
+    if obj:IsA("BasePart") then
+        obj.Material = Enum.Material.SmoothPlastic
+        obj.Reflectance = 0
+        obj.CastShadow = false
+    end
+
+    -- Texturas e Decalques: Torna invisível, mas NÃO deleta
+    -- Isso impede erro em scripts que procuram por "Decal" dentro da part
+    if obj:IsA("Decal") or obj:IsA("Texture") then
+        obj.Transparency = 1
+    end
+
+    -- Partículas e Efeitos: Desativa, mas mantém o objeto lá
+    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
+        obj.Enabled = false
+    end
+    
+    -- Luzes Pontuais: Reduz o alcance e desativa sombras
+    if obj:IsA("Light") then
+        obj.Shadows = false
+        -- Opcional: Reduzir o range para pesar menos
+        -- obj.Range = obj.Range * 0.5 
+    end
+    
+    -- Efeitos de Pós-Processamento (Bloom, Blur, SunRays): Desativa
+    if obj:IsA("PostEffect") then
+        obj.Enabled = false
+    end
+end
+
+-- 4. Executa a varredura
+for _, v in ipairs(game:GetDescendants()) do
+    pcall(function()
+        OtimizarItem(v)
+    end)
+end
+
+-- Monitora novos objetos para otimizar automaticamente (Opcional, pode remover se causar lag)
+game.DescendantAdded:Connect(function(v)
+    task.wait() -- Espera um frame para garantir que o objeto carregou
+    pcall(function()
+        OtimizarItem(v)
+    end)
+end)
+
+print(">> flow_blox: Otimização concluída com sucesso!")
