@@ -1,6 +1,5 @@
---// Flow Engine v20.13 - Ultimate Hunter Sync (Correção de FOV e Detecção)
---// Criador: Hatsune_inkyt | Agora com detecção REAL baseada no visual
---// Correção: A mira não reseta mais sozinha e foca apenas quem está DENTRO do desenho
+--// Flow Engine v22.0 - Ultimate Unified (FP/TP + Sticky Aim + Persistence)
+--// Criador Original: Hatsune_inkyt | Unificação: Performance & Perspectiva
 --// Comando para destruir: .0 no chat
 
 local Players = game:GetService("Players")
@@ -16,6 +15,8 @@ local scriptActive = true
 -- Variáveis de Estado
 local aimbotEnabled = false
 local teamCheck = false
+local wallCheck = true
+local espEnabled = false
 local currentAimMode = "Normal" 
 local fovShape = "Círculo"
 local fovRadius = 80
@@ -23,11 +24,16 @@ local fovColor = Color3.fromRGB(0, 255, 255)
 local isRGB = true
 local targetPart = "Head"
 local lockedPlayer = "Todos"
+local currentTarget = nil
+local smoothness = 0.15 -- Padrão (Suave)
 
--- Variáveis do Modo Livre (Âncora)
+-- Variáveis do Modo Livre
 local freeModeEnabled = false
 local fovPosition = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
 local draggingFov = false
+
+-- Cache para o ESP
+local espCache = {}
 
 local creativeColors = {
     ["Ciano Neon"] = Color3.fromRGB(0, 255, 255), ["Rubi"] = Color3.fromRGB(255, 30, 60),
@@ -51,40 +57,48 @@ end
 
 local drawings = {
     circle = createDrawing("Circle", {Thickness = 2, Filled = false, Visible = false}),
-    square = createDrawing("Square", {Thickness = 2, Filled = false, Visible = false}),
-    ch1 = createDrawing("Line", {Thickness = 2, Visible = false}),
-    ch2 = createDrawing("Line", {Thickness = 2, Visible = false}),
-    ch3 = createDrawing("Line", {Thickness = 2, Visible = false}),
-    ch4 = createDrawing("Line", {Thickness = 2, Visible = false}),
-    c1 = createDrawing("Line", {Thickness = 2.5, Visible = false}),
-    c2 = createDrawing("Line", {Thickness = 2.5, Visible = false}),
-    c3 = createDrawing("Line", {Thickness = 2.5, Visible = false}),
-    c4 = createDrawing("Line", {Thickness = 2.5, Visible = false})
+    square = createDrawing("Square", {Thickness = 2, Filled = false, Visible = false})
 }
 
--- Interface Principal
+-- Função de Visibilidade (Wall Check)
+local function isVisible(part)
+    if not wallCheck then return true end
+    local castPoints = {camera.CFrame.Position, part.Position}
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {player.Character, camera}
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    local result = Workspace:Raycast(castPoints[1], castPoints[2] - castPoints[1], rayParams)
+    return not result or result.Instance:IsDescendantOf(part.Parent)
+end
+
+-- INTERFACE (v20.20 Restore)
 local screenGui = Instance.new("ScreenGui", player.PlayerGui)
-screenGui.Name = "Flow_V20_Fixed"; screenGui.ResetOnSpawn = false
+screenGui.Name = "Flow_V22_Final"; screenGui.ResetOnSpawn = false
 local mainFrame = Instance.new("Frame", screenGui)
 mainFrame.Size = UDim2.new(0, 420, 0, 420); mainFrame.Position = UDim2.new(0.5, -210, 0.5, -210)
 mainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15); mainFrame.Visible = false; mainFrame.BorderSizePixel = 0
 Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 10)
-local uiStroke = Instance.new("UIStroke", mainFrame); uiStroke.Thickness = 3; uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+local uiStroke = Instance.new("UIStroke", mainFrame); uiStroke.Thickness = 3
 
-local header = Instance.new("Frame", mainFrame); header.Size = UDim2.new(1, 0, 0, 40); header.BackgroundColor3 = Color3.fromRGB(0, 0, 0); header.BorderSizePixel = 0
+local header = Instance.new("Frame", mainFrame); header.Size = UDim2.new(1, 0, 0, 40); header.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 Instance.new("UICorner", header).CornerRadius = UDim.new(0, 10)
-local title = Instance.new("TextLabel", header); title.Size = UDim2.new(1, 0, 1, 0); title.BackgroundTransparency = 1; title.Text = "FLOW-aim-assist | Hatsune_inkyt"; title.TextColor3 = Color3.new(1, 1, 1); title.Font = "GothamBold"; title.TextSize = 16
+local title = Instance.new("TextLabel", header); title.Size = UDim2.new(1, 0, 1, 0); title.BackgroundTransparency = 1; title.Text = "FLOW-aim-assist | v22.0 Unified"; title.TextColor3 = Color3.new(1, 1, 1); title.Font = "GothamBold"; title.TextSize = 16
 
 local sidebar = Instance.new("Frame", mainFrame); sidebar.Size = UDim2.new(0, 100, 1, -40); sidebar.Position = UDim2.new(0, 0, 0, 40); sidebar.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
 Instance.new("UIListLayout", sidebar).HorizontalAlignment = "Center"
+
 local content = Instance.new("Frame", mainFrame); content.Size = UDim2.new(1, -110, 1, -50); content.Position = UDim2.new(0, 105, 0, 45); content.BackgroundTransparency = 1
 
 local tabs = {}
-local function createTab(name)
+local function createTab(name, sideBtnText)
     local f = Instance.new("ScrollingFrame", content); f.Size = UDim2.new(1, 0, 1, 0); f.BackgroundTransparency = 1; f.Visible = false; f.AutomaticCanvasSize = "Y"; f.ScrollBarThickness = 0
-    Instance.new("UIListLayout", f).Padding = UDim.new(0, 8); tabs[name] = f; return f
+    Instance.new("UIListLayout", f).Padding = UDim.new(0, 8); tabs[name] = f
+    local sBtn = Instance.new("TextButton", sidebar); sBtn.Size = UDim2.new(1, 0, 0, 40); sBtn.Text = sideBtnText; sBtn.BackgroundTransparency = 1; sBtn.TextColor3 = Color3.new(1,1,1); sBtn.Font = "GothamBold"
+    sBtn.Activated:Connect(function() for _, t in pairs(tabs) do t.Visible = false end f.Visible = true end)
+    return f
 end
-local inicioTab = createTab("Início"); local configTab = createTab("Config")
+local inicioTab = createTab("Início", "INÍCIO"); inicioTab.Visible = true
+local configTab = createTab("Config", "CONFIG")
 
 local uiElements = {}
 local function updateAllGlow()
@@ -92,13 +106,14 @@ local function updateAllGlow()
     for _, item in pairs(uiElements) do
         if item.Type == "Aimbot" then item.Instance.TextColor3 = aimbotEnabled and displayColor or Color3.new(1,1,1)
         elseif item.Type == "Team" then item.Stroke.Color = teamCheck and displayColor or Color3.fromRGB(50,50,50); item.Instance.BackgroundColor3 = teamCheck and Color3.fromRGB(30,30,60) or Color3.fromRGB(20,20,35)
+        elseif item.Type == "Wall" then item.Instance.TextColor3 = wallCheck and displayColor or Color3.new(1,1,1)
+        elseif item.Type == "ESP" then item.Instance.TextColor3 = espEnabled and displayColor or Color3.new(1,1,1)
         elseif item.Type == "Player" then item.Instance.TextColor3 = (lockedPlayer == item.Player) and displayColor or Color3.new(0.8,0.8,0.8)
         elseif item.Type == "Part" then item.Instance.TextColor3 = (targetPart == item.Part) and displayColor or Color3.new(0.7,0.7,0.7)
         elseif item.Type == "Shape" then item.Instance.TextColor3 = (fovShape == item.Shape) and displayColor or Color3.new(0.7,0.7,0.7)
-        elseif item.Type == "Mode" then item.Instance.TextColor3 = (currentAimMode == item.Mode) and displayColor or Color3.new(0.7,0.7,0.7)
         elseif item.Type == "SliderDot" then item.Instance.BackgroundColor3 = displayColor
-        elseif item.Type == "MenuIcon" then item.Stroke.Color = displayColor
         elseif item.Type == "FreeMode" then item.Instance.TextColor3 = freeModeEnabled and displayColor or Color3.new(1,1,1)
+        elseif item.Type == "MenuIcon" then item.Stroke.Color = displayColor
         end
     end
 end
@@ -118,63 +133,53 @@ local aimBtn = Instance.new("TextButton", lobbySec); aimBtn.Size = UDim2.new(1,0
 table.insert(uiElements, {Instance = aimBtn, Type = "Aimbot"})
 aimBtn.Activated:Connect(function() aimbotEnabled = not aimbotEnabled updateAllGlow() end)
 
-local teamBtn = Instance.new("TextButton", lobbySec); teamBtn.Size = UDim2.new(1,0,0,30); teamBtn.Text = "verificar time"; teamBtn.BackgroundColor3 = Color3.fromRGB(30,30,50); Instance.new("UICorner", teamBtn)
-local tStr = Instance.new("UIStroke", teamBtn); tStr.Thickness = 2
-table.insert(uiElements, {Instance = teamBtn, Stroke = tStr, Type = "Team"})
+local teamBtn = Instance.new("TextButton", lobbySec); teamBtn.Size = UDim2.new(1,0,0,30); teamBtn.Text = "Verificar Time"; teamBtn.BackgroundColor3 = Color3.fromRGB(30,30,50); Instance.new("UICorner", teamBtn)
+local tStr = Instance.new("UIStroke", teamBtn); tStr.Thickness = 2; table.insert(uiElements, {Instance = teamBtn, Stroke = tStr, Type = "Team"})
 teamBtn.Activated:Connect(function() teamCheck = not teamCheck updateAllGlow() end)
 
+local wallBtn = Instance.new("TextButton", lobbySec); wallBtn.Size = UDim2.new(1,0,0,30); wallBtn.Text = "Wall Check (Ativo)"; wallBtn.BackgroundColor3 = Color3.fromRGB(30,30,50); Instance.new("UICorner", wallBtn)
+table.insert(uiElements, {Instance = wallBtn, Type = "Wall"})
+wallBtn.Activated:Connect(function() wallCheck = not wallCheck updateAllGlow() end)
+
+local espBtn = Instance.new("TextButton", lobbySec); espBtn.Size = UDim2.new(1,0,0,30); espBtn.Text = "ESP (HP/Dist)"; espBtn.BackgroundColor3 = Color3.fromRGB(30,30,50); Instance.new("UICorner", espBtn)
+table.insert(uiElements, {Instance = espBtn, Type = "ESP"})
+espBtn.Activated:Connect(function() espEnabled = not espEnabled if not espEnabled then for i, v in pairs(espCache) do v:Remove() espCache[i] = nil end end updateAllGlow() end)
+
+-- ABA INÍCIO - JOGADORES
 local playerListSec = addSection(inicioTab, "JOGADORES")
 local function updatePlayerList()
     for i = #uiElements, 1, -1 do if uiElements[i].Type == "Player" then table.remove(uiElements, i) end end
     playerListSec:ClearAllChildren(); Instance.new("UIListLayout", playerListSec)
-    local allBtn = Instance.new("TextButton", playerListSec); allBtn.Size = UDim2.new(1,0,0,25); allBtn.Text = "--- TODOS  ---"; allBtn.BackgroundTransparency = 1; allBtn.Font = "GothamBold"
+    local allBtn = Instance.new("TextButton", playerListSec); allBtn.Size = UDim2.new(1,0,0,25); allBtn.Text = "--- TODOS ---"; allBtn.BackgroundTransparency = 1; allBtn.Font = "GothamBold"
     table.insert(uiElements, {Instance = allBtn, Type = "Player", Player = "Todos"})
-    allBtn.Activated:Connect(function() lockedPlayer = "Todos" updateAllGlow() end)
+    allBtn.Activated:Connect(function() lockedPlayer = "Todos"; currentTarget = nil; updateAllGlow() end)
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= player then
             local b = Instance.new("TextButton", playerListSec); b.Size = UDim2.new(1,0,0,25); b.Text = p.DisplayName; b.BackgroundTransparency = 1
             table.insert(uiElements, {Instance = b, Type = "Player", Player = p})
-            b.Activated:Connect(function() lockedPlayer = p updateAllGlow() end)
+            b.Activated:Connect(function() lockedPlayer = p; currentTarget = nil; updateAllGlow() end)
         end
     end
 end
 Players.PlayerAdded:Connect(updatePlayerList); updatePlayerList()
 
-local partSec = addSection(inicioTab, "ALVO")
-for _, p in pairs({{"Cabeça", "Head"}, {"Tronco", "HumanoidRootPart"}}) do
-    local b = Instance.new("TextButton", partSec); b.Size = UDim2.new(1,0,0,25); b.Text = p[1]; b.BackgroundTransparency = 1
-    table.insert(uiElements, {Instance = b, Type = "Part", Part = p[2]})
-    b.Activated:Connect(function() targetPart = p[2] updateAllGlow() end)
-end
-
--- ABA CONFIG
+-- ABA CONFIG - CONTROLE
 local controlSec = addSection(configTab, "CONTROLE")
-local freeModeBtn = Instance.new("TextButton", controlSec); freeModeBtn.Size = UDim2.new(1,0,0,30); freeModeBtn.Text = "Modo Livre (Arrastar)"; freeModeBtn.BackgroundColor3 = Color3.fromRGB(30,30,50); Instance.new("UICorner", freeModeBtn)
+local freeModeBtn = Instance.new("TextButton", controlSec); freeModeBtn.Size = UDim2.new(1,0,0,30); freeModeBtn.Text = "Modo Livre (FOV)"; freeModeBtn.BackgroundColor3 = Color3.fromRGB(30,30,50); Instance.new("UICorner", freeModeBtn)
 table.insert(uiElements, {Instance = freeModeBtn, Type = "FreeMode"})
 freeModeBtn.Activated:Connect(function() freeModeEnabled = not freeModeEnabled updateAllGlow() end)
 
-local resetPosBtn = Instance.new("TextButton", controlSec); resetPosBtn.Size = UDim2.new(1,0,0,30); resetPosBtn.Text = "Resetar Posição FOV"; resetPosBtn.BackgroundTransparency = 1; resetPosBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-resetPosBtn.Activated:Connect(function() fovPosition = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2) end)
+local smoothBtn = Instance.new("TextButton", controlSec); smoothBtn.Size = UDim2.new(1,0,0,30); smoothBtn.Text = "Suavidade: Média"; smoothBtn.BackgroundTransparency = 1; smoothBtn.TextColor3 = Color3.new(1,1,1)
+smoothBtn.Activated:Connect(function()
+    smoothness = (smoothness == 0.15) and 0.08 or (smoothness == 0.08 and 0.25 or 0.15)
+    smoothBtn.Text = "Suavidade: " .. (smoothness == 0.08 and "Baixa (Rápida)" or (smoothness == 0.25 and "Alta (Lenta)" or "Média"))
+end)
 
-local shapeSec = addSection(configTab, "FORMA DO FOV")
-for _, s in pairs({"Círculo", "Quadrado", "Crosshair"}) do
-    local b = Instance.new("TextButton", shapeSec); b.Size = UDim2.new(1,0,0,25); b.Text = s; b.BackgroundTransparency = 1
-    table.insert(uiElements, {Instance = b, Type = "Shape", Shape = s})
-    b.Activated:Connect(function() fovShape = s updateAllGlow() end)
-end
-
-local modeSec = addSection(configTab, "MODO VISUAL")
-for _, m in pairs({"Invisível", "Normal", "Caçador"}) do
-    local b = Instance.new("TextButton", modeSec); b.Size = UDim2.new(1,0,0,25); b.Text = m; b.BackgroundTransparency = 1
-    table.insert(uiElements, {Instance = b, Type = "Mode", Mode = m})
-    b.Activated:Connect(function() currentAimMode = m updateAllGlow() end)
-end
-
-local sliderSec = addSection(configTab, "TAMANHO")
+-- ABA CONFIG - TAMANHO & CORES
+local sliderSec = addSection(configTab, "TAMANHO FOV")
 local sFrame = Instance.new("Frame", sliderSec); sFrame.Size = UDim2.new(0.9,0,0,30); sFrame.BackgroundTransparency = 1
 local sLine = Instance.new("Frame", sFrame); sLine.Size = UDim2.new(1,0,0,2); sLine.Position = UDim2.new(0,0,0.5,0); sLine.BackgroundColor3 = Color3.new(0.3,0.3,0.4)
-local sDot = Instance.new("Frame", sFrame); sDot.Size = UDim2.new(0,8,0,15); sDot.Position = UDim2.new(0.2,0,0.5,-7.5)
-table.insert(uiElements, {Instance = sDot, Type = "SliderDot"})
+local sDot = Instance.new("Frame", sFrame); sDot.Size = UDim2.new(0,8,0,15); sDot.Position = UDim2.new(0.2,0,0.5,-7.5); table.insert(uiElements, {Instance = sDot, Type = "SliderDot"})
 sFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         local move; move = RunService.RenderStepped:Connect(function()
@@ -191,120 +196,92 @@ for name, color in pairs(creativeColors) do
     b.Activated:Connect(function() isRGB = false fovColor = color updateAllGlow() end)
 end
 
--- RENDER LOOP (LÓGICA ATUALIZADA - DETECÇÃO VISUAL CORRIGIDA)
+-- LÓGICA DE ALVO (Sticky + Persistence)
+local function getBestTarget()
+    if lockedPlayer ~= "Todos" then
+        if lockedPlayer.Character and lockedPlayer.Character:FindFirstChild(targetPart) and lockedPlayer.Character.Humanoid.Health > 0 then
+            local part = lockedPlayer.Character[targetPart]
+            if isVisible(part) then return part end
+        end
+        return nil
+    end
+
+    if currentTarget and currentTarget.Parent and currentTarget.Parent:FindFirstChild("Humanoid") then
+        if currentTarget.Parent.Humanoid.Health > 0 and isVisible(currentTarget) then return currentTarget end
+    end
+
+    local bestTarget, nearestDist = nil, fovRadius
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= player and p.Character and p.Character:FindFirstChild(targetPart) and p.Character.Humanoid.Health > 0 then
+            if teamCheck and p.Team == player.Team then continue end
+            local part = p.Character[targetPart]
+            local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
+            if onScreen then
+                local dist = (Vector2.new(screenPos.X, screenPos.Y) - fovPosition).Magnitude
+                if dist < nearestDist and isVisible(part) then nearestDist = dist; bestTarget = part end
+            end
+        end
+    end
+    return bestTarget
+end
+
+-- RENDER LOOP (UNIFIED PERSPECTIVE)
 RunService.RenderStepped:Connect(function()
     if not scriptActive then return end
     local dynamicColor = isRGB and Color3.fromHSV(tick() % 5 / 5, 1, 1) or fovColor
     uiStroke.Color = dynamicColor; updateAllGlow()
 
-    -- 1. Controle da Posição do FOV (REMOVIDO RESET AUTOMÁTICO)
+    -- 1. FOV Movement
     if freeModeEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
         local mPos = Vector2.new(mouse.X, mouse.Y + 36)
-        if (mPos - fovPosition).Magnitude < 100 or draggingFov then 
-            draggingFov = true
-            -- Removido o limite estrito para permitir movimento livre, já que o usuário quer ajustar o FOV
-            fovPosition = mPos 
-        end
-    else 
-        draggingFov = false 
-        -- CORREÇÃO: Removida a linha que resetava o FOVPosition para o centro quando soltava o mouse
-    end
+        if (mPos - fovPosition).Magnitude < 100 or draggingFov then draggingFov = true; fovPosition = mPos end
+    else draggingFov = false end
 
-    -- Resetar visibilidade dos desenhos
-    for _, d in pairs(drawings) do d.Visible = false end
+    -- 2. Visuals
+    drawings.circle.Visible = (aimbotEnabled and fovShape == "Círculo")
+    drawings.circle.Position = fovPosition; drawings.circle.Radius = fovRadius; drawings.circle.Color = dynamicColor
 
-    if aimbotEnabled then
-        -- 2. Desenho do Visual
-        if currentAimMode ~= "Invisível" then
-            if fovShape == "Círculo" then
-                drawings.circle.Visible = true; drawings.circle.Position = fovPosition; drawings.circle.Radius = fovRadius; drawings.circle.Color = dynamicColor
-            elseif fovShape == "Quadrado" then
-                drawings.square.Visible = true; drawings.square.Size = Vector2.new(fovRadius*2, fovRadius*2); drawings.square.Position = fovPosition - Vector2.new(fovRadius, fovRadius); drawings.square.Color = dynamicColor
-            elseif fovShape == "Crosshair" then
-                local gap = 5
-                for i=1,4 do drawings["ch"..i].Visible = true; drawings["ch"..i].Color = dynamicColor end
-                drawings.ch1.From = fovPosition + Vector2.new(0, gap); drawings.ch1.To = fovPosition + Vector2.new(0, gap + fovRadius/2)
-                drawings.ch2.From = fovPosition - Vector2.new(0, gap); drawings.ch2.To = fovPosition - Vector2.new(0, gap + fovRadius/2)
-                drawings.ch3.From = fovPosition + Vector2.new(gap, 0); drawings.ch3.To = fovPosition + Vector2.new(gap + fovRadius/2, 0)
-                drawings.ch4.From = fovPosition - Vector2.new(gap, 0); drawings.ch4.To = fovPosition - Vector2.new(gap + fovRadius/2, 0)
-            end
-        end
-
-        if currentAimMode == "Caçador" then
-            local pulse = math.abs(math.sin(tick() * 8)) * 15
-            local size = fovRadius + pulse
-            for i=1,4 do drawings["c"..i].Visible = true; drawings["c"..i].Color = dynamicColor end
-            drawings.c1.From = fovPosition + Vector2.new(-size, -size); drawings.c1.To = fovPosition + Vector2.new(-size + 20, -size + 20)
-            drawings.c2.From = fovPosition + Vector2.new(size, -size); drawings.c2.To = fovPosition + Vector2.new(size - 20, -size + 20)
-            drawings.c3.From = fovPosition + Vector2.new(-size, size); drawings.c3.To = fovPosition + Vector2.new(-size + 20, size - 20)
-            drawings.c4.From = fovPosition + Vector2.new(size, size); drawings.c4.To = fovPosition + Vector2.new(size - 20, size - 20)
-        end
-
-        local target = nil
-        
-        -- 3. SELEÇÃO DE ALVO CORRIGIDA (DETECÇÃO VISUAL / SCREEN DISTANCE)
-        -- Agora ele verifica quem está MAIS PRÓXIMO DO CÍRCULO na tela, e não quem está perto do seu personagem no mapa 3D
-        if lockedPlayer == "Todos" then
-            local nearestDist = fovRadius -- Começa com o raio do FOV como limite máximo
-            for _, p in pairs(Players:GetPlayers()) do
-                if p ~= player and p.Character and p.Character:FindFirstChild(targetPart) and p.Character.Humanoid.Health > 0 then
-                    if teamCheck and p.Team == player.Team then continue end
-                    
-                    -- Converte posição 3D do alvo para posição 2D na tela
-                    local targetPos3D = p.Character[targetPart].Position
-                    local screenPos, onScreen = camera:WorldToViewportPoint(targetPos3D)
-                    
+    -- 3. ESP
+    if espEnabled then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") then
+                if teamCheck and p.Team == player.Team then if espCache[p] then espCache[p].Visible = false end continue end
+                local hum = p.Character.Humanoid
+                if hum.Health > 0 then
+                    local hrp = p.Character.HumanoidRootPart
+                    local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
                     if onScreen then
-                        local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
-                        local distToFov = (screenPos2D - fovPosition).Magnitude -- Distância até o centro do desenho
-                        
-                        -- Verifica se está DENTRO do círculo e se é o mais próximo
-                        if distToFov < nearestDist then
-                            nearestDist = distToFov
-                            target = p.Character[targetPart]
-                        end
-                    end
-                end
+                        if not espCache[p] then espCache[p] = createDrawing("Text", {Size = 16, Center = true, Outline = true, Color = Color3.new(1,1,1)}) end
+                        espCache[p].Visible = true; espCache[p].Position = Vector2.new(screenPos.X, screenPos.Y)
+                        espCache[p].Text = string.format("%s\n[HP: %d] [%dM]", p.DisplayName, math.floor(hum.Health), math.floor((camera.CFrame.Position - hrp.Position).Magnitude))
+                    elseif espCache[p] then espCache[p].Visible = false end
+                elseif espCache[p] then espCache[p].Visible = false end
             end
-        elseif typeof(lockedPlayer) == "Instance" and lockedPlayer.Character then
-            -- Para jogador específico travado, verifica se ele está na tela
-            local p = lockedPlayer
-            if p.Character and p.Character:FindFirstChild(targetPart) then
-                local screenPos, onScreen = camera:WorldToViewportPoint(p.Character[targetPart].Position)
-                if onScreen then
-                    target = p.Character[targetPart]
-                end
-            end
-        end
-
-        -- 4. APLICAÇÃO DA MIRA (Offset Visual)
-        if target then
-            local lookAtCFrame = CFrame.new(camera.CFrame.Position, target.Position)
-            local viewport = camera.ViewportSize
-            local center = Vector2.new(viewport.X/2, viewport.Y/2)
-            
-            -- Calcula o offset baseado na posição atual do desenho do FOV
-            local dx = fovPosition.X - center.X
-            local dy = fovPosition.Y - center.Y
-            
-            local sensX = (camera.FieldOfView / viewport.Y)
-            local sensY = sensX
-            local offsetRotation = CFrame.Angles(math.rad(dy * sensY), math.rad(-dx * sensX), 0)
-            
-            camera.CFrame = lookAtCFrame * offsetRotation
         end
     end
+
+    -- 4. AIMBOT (Unified FP/TP)
+    if aimbotEnabled then
+        currentTarget = getBestTarget()
+        if currentTarget then
+            local targetLook = CFrame.new(camera.CFrame.Position, currentTarget.Position)
+            -- Sincronização de perspectiva: funciona em 1ª e 3ª pessoa
+            camera.CFrame = camera.CFrame:Lerp(targetLook, smoothness)
+        end
+    else currentTarget = nil end
 end)
 
--- Menu Toggle e Abas
+-- Menu Toggle
 local menuToggle = Instance.new("TextButton", screenGui); menuToggle.Size = UDim2.new(0, 45, 0, 45); menuToggle.Position = UDim2.new(0, 10, 0, 55); menuToggle.Text = "flow"; menuToggle.BackgroundColor3 = Color3.new(0,0,0); menuToggle.TextColor3 = Color3.new(1,1,1)
 Instance.new("UICorner", menuToggle).CornerRadius = UDim.new(1,0)
 local mStr = Instance.new("UIStroke", menuToggle); mStr.Thickness = 2; table.insert(uiElements, {Instance = menuToggle, Stroke = mStr, Type = "MenuIcon"})
 menuToggle.Activated:Connect(function() mainFrame.Visible = not mainFrame.Visible end)
 
-local function addTabBtn(n) 
-    local b = Instance.new("TextButton", sidebar); b.Size = UDim2.new(1,0,0,40); b.Text = n; b.BackgroundTransparency = 1; b.TextColor3 = Color3.new(1,1,1)
-    b.Activated:Connect(function() for k,v in pairs(tabs) do v.Visible = (k==n) end end) 
-end
-addTabBtn("Início"); addTabBtn("Config"); tabs["Início"].Visible = true
-player.Chatted:Connect(function(msg) if msg == ".0" then scriptActive = false; screenGui:Destroy(); for _, d in pairs(drawings) do d:Remove() end end end)
+player.Chatted:Connect(function(msg)
+    if msg == ".0" then
+        scriptActive = false
+        screenGui:Destroy()
+        for _, d in pairs(drawings) do d:Remove() end
+        for _, v in pairs(espCache) do v:Remove() end
+    end
+end)
